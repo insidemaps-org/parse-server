@@ -7,7 +7,8 @@ var batch = require('./batch'),
     multer = require('multer'),
     Parse = require('parse/node').Parse,
     path = require('path'),
-    authDataManager = require('./authDataManager');
+    authDataManager = require('./authDataManager'),
+    sendmailTransport = require('nodemailer-sendmail-transport');
 
 if (!global._babelPolyfill) {
   require('babel-polyfill');
@@ -173,7 +174,16 @@ class ParseServer {
     // Note that passing an instance would work too
     const pushController = new PushController(pushControllerAdapter, appId, push);
 
-    const emailControllerAdapter = loadAdapter(emailAdapter);
+    const emailControllerAdapter = loadAdapter(emailAdapter || {
+        module: "parse-server-nodemailer-adapter",
+        options: {
+            fromAddress: {
+                name: 'InsideMaps.com',
+                address: 'noreply@insidemaps.com'
+            },
+            transportURI : sendmailTransport()
+        }
+    });
     const userController = new UserController(emailControllerAdapter, appId, { verifyUserEmails });
 
     const cacheControllerAdapter = loadAdapter(cacheAdapter, InMemoryCacheAdapter, {appId: appId});
@@ -295,7 +305,7 @@ class ParseServer {
     let appRouter = new PromiseRouter(routes, appId);
     appRouter.use(middlewares.allowCrossDomain);
     appRouter.use(middlewares.handleParseHeaders);
-    
+
     batch.mountOnto(appRouter);
 
     api.use(appRouter.expressRouter());
