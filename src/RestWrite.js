@@ -430,7 +430,7 @@ RestWrite.prototype.createSessionTokenIfNeeded = function() {
   if (this.className !== '_User') {
     return;
   }
-  if (this.query) {
+  if (this.query && (!this.data || !this.data.authData)) {
     return;
   }
   return this.createSessionToken();
