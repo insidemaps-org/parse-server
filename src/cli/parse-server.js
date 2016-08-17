@@ -62,7 +62,7 @@ var server = app.listen(options.port, function() {
     console.log(`${key}: ${value}`);
   }
   console.log('');
-  console.log('parse-server running on '+options.serverURL);
+  console.log('InsideMaps parse-server running on '+options.serverURL);
 });
 
 var handleShutdown = function() {
