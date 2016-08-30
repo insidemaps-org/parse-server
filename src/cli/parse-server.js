@@ -59,6 +59,10 @@ var server = app.listen(options.port, function() {
     if (key == "masterKey") {
       value = "***REDACTED***";
     }
+    
+    if(typeof(value) === "object")
+        value = JSON.stringify(value);
+
     console.log(`${key}: ${value}`);
   }
   console.log('');

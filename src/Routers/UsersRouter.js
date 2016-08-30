@@ -194,6 +194,53 @@ export class UsersRouter extends ClassesRouter {
     });
   }
 
+  handleRevokeEmailVerification(req) {
+
+      if (!req.info || !req.info.sessionToken) {
+        throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token');
+      }
+
+      let sessionToken = req.info.sessionToken;
+
+      return rest.find(req.config, Auth.master(req.config), '_Session',
+        { sessionToken },
+        { include: 'user' }, req.info.clientSDK)
+        .then((response) => {
+          if (!response.results ||
+            response.results.length == 0 ||
+            !response.results[0].user) {
+            throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token');
+          }
+          else
+          {
+            let user = response.results[0].user;
+
+            //Make sure that sessionToken belongs to the /:objectId/ user
+            if(user.objectId !== req.params.objectId)
+              throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token');
+            else
+              return user;
+          }
+      }).then(function(user){
+          let userController = req.config.userController;
+          userController.setEmailVerifyToken(user);
+
+          let userData = {
+              emailVerified : user.emailVerified,
+              _email_verify_token: user._email_verify_token,
+              _email_verify_token_expires_at : user._email_verify_token_expires_at
+          };
+
+          return req.config.database.update("_User", {objectId:user.objectId}, userData)
+              .then(function(){
+                  userController.sendVerificationEmail(user);
+              return {response: {}};
+          },function(error){
+              console.error(error);
+              return {response: error.stack || error.message};
+          });
+      })
+    }
 
   mountRoutes() {
     this.route('GET', '/users', req => { return this.handleFind(req); });
@@ -204,7 +251,8 @@ export class UsersRouter extends ClassesRouter {
     this.route('DELETE', '/users/:objectId', req => { return this.handleDelete(req); });
     this.route('GET', '/login', req => { return this.handleLogIn(req); });
     this.route('POST', '/logout', req => { return this.handleLogOut(req); });
-    this.route('POST', '/requestPasswordReset', req => { return this.handleResetRequest(req); })
+    this.route('POST', '/requestPasswordReset', req => { return this.handleResetRequest(req); });
+    this.route('POST', '/users/:objectId/revokeEmailVerification', req => { return this.handleRevokeEmailVerification(req); });
   }
 }
 
