@@ -251,7 +251,7 @@ RestWrite.prototype.handleAuthDataValidation = function(authData) {
   return Promise.all(validations);
 }
 
-RestWrite.prototype.findUsersWithAuthData = function(authData) {
+RestWrite.prototype.findUsersWithAuthData = function(authData) {    
   let providers = Object.keys(authData);
   let query = providers.reduce((memo, provider) => {
     if (!authData[provider]) {
@@ -285,8 +285,7 @@ RestWrite.prototype.handleAuthData = function(authData) {
     results = r;
     if (results.length > 1) {
       // More than 1 user with the passed id's
-      throw new Parse.Error(Parse.Error.ACCOUNT_ALREADY_LINKED,
-                              'this auth is already used');
+      throw new Parse.Error(Parse.Error.ACCOUNT_ALREADY_LINKED, 'This auth is already used by users: '+r.join(","));
     }
 
     this.storage['authProvider'] = Object.keys(authData).join(',');
@@ -333,8 +332,7 @@ RestWrite.prototype.handleAuthData = function(authData) {
         // Trying to update auth data but users
         // are different
         if (results[0].objectId !== this.query.objectId) {
-          throw new Parse.Error(Parse.Error.ACCOUNT_ALREADY_LINKED,
-                              'this auth is already used');
+          throw new Parse.Error(Parse.Error.ACCOUNT_ALREADY_LINKED, 'This auth is already used by user: '+results[0].objectId+', cant link with user: '+this.query.objectId);
         }
       }
     }
