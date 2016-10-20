@@ -96,5 +96,5 @@ export function removeTransport(transport) {
   });
 }
 
-export { logger, addTransport, configureLogger, removeTransport };
+export { logger };
 export default logger;
