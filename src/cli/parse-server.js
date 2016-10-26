@@ -4,6 +4,7 @@ import { ParseServer } from '../index';
 import definitions from './cli-definitions';
 import program from './utils/commander';
 import { mergeWithOptions } from './utils/commander';
+import fs from 'fs';
 
 program.loadDefinitions(definitions);
 
@@ -59,14 +60,27 @@ var server = app.listen(options.port, function() {
     if (key == "masterKey") {
       value = "***REDACTED***";
     }
-    
+
     if(typeof(value) === "object")
         value = JSON.stringify(value);
 
     console.log(`${key}: ${value}`);
   }
+
+
+  try
+  {
+      let revision = null;
+      revision = fs.readFileSync(__dirname+"/../ParseServerRevision.txt");      
+      console.log('revision: '+revision);
+  }
+  catch (e)
+  {console.error(e)}
+
   console.log('');
-  console.log('InsideMaps parse-server running on '+options.serverURL);
+  console.log('InsideMaps parse-server running...');
+
+
 });
 
 var handleShutdown = function() {
