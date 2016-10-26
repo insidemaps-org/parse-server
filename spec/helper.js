@@ -43,7 +43,7 @@ var port = 8378;
 let gridStoreAdapter = new GridStoreAdapter(mongoURI);
 let logLevel;
 let silent = true;
-if (process.env.VERBOSE) {
+if (process.env.VERBOSE ? JSON.parse(process.env.VERBOSE.toString().toLowerCase()):false) {
   silent = false;
   logLevel = 'verbose';
 }

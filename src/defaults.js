@@ -8,8 +8,8 @@ let logsFolder = (() => {
 })();
 
 let { verbose, level } = (() => {
-  let verbose = process.env.VERBOSE ? true : false;
-  return { verbose, level: verbose ? 'verbose' : undefined }
+  let verbose = process.env.VERBOSE ? JSON.parse(process.env.VERBOSE.toString().toLowerCase()) : false;
+  return { verbose, level: (verbose ? 'verbose' : 'info') }; 
 })();
 
 export default {
@@ -18,7 +18,7 @@ export default {
   logsFolder,
   verbose,
   level,
-  silent: false,
+  silent: !verbose,
   enableAnonymousUsers: true,
   allowClientClassCreation: true,
   maxUploadSize: '20mb',
