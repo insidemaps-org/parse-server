@@ -58,6 +58,8 @@ import DatabaseController       from './Controllers/DatabaseController';
 import SchemaCache              from './Controllers/SchemaCache';
 import ParsePushAdapter         from 'parse-server-push-adapter';
 import MongoStorageAdapter      from './Adapters/Storage/Mongo/MongoStorageAdapter';
+import SendGrid                 from 'sendgrid';
+
 // Mutate the Parse object to add the Cloud Code handlers
 addParseCloud();
 
@@ -138,8 +140,42 @@ class ParseServer {
     expireInactiveSessions = defaults.expireInactiveSessions,
     revokeSessionOnPasswordReset = defaults.revokeSessionOnPasswordReset,
     schemaCacheTTL = defaults.schemaCacheTTL, // cache for 5s
+    sendgridApiKey = defaults.sendgridApiKey,
     __indexBuildCompletionCallbackForTests = () => {},
   }) {
+
+      //
+      //    NOTE (marko):
+      //    Adding Sendgrid adapter like this because NPM package doesn't implement fromname.
+      //
+      let SimpleSendGridAdapter = mailOptions => {
+      if (!mailOptions || !mailOptions.apiKey || !mailOptions.fromAddress) {
+        throw 'SimpleSendGridAdapter requires an API Key.';
+      }
+      let sendgrid = SendGrid(mailOptions.apiKey);
+
+      let sendMail = ({to, subject, text}) => {
+        return new Promise((resolve, reject) => {
+          sendgrid.send({
+            from: mailOptions.fromAddress,
+            fromname: mailOptions.fromName,
+            to: to,
+            subject: subject,
+            text: text,
+          }, function(err, json) {
+            if (err) {
+               reject(err);
+            }
+            resolve(json);
+          });
+        });
+      }
+
+      return Object.freeze({
+          sendMail: sendMail
+      });
+  };
+
     // Initialize the node client SDK automatically
     Parse.initialize(appId, javascriptKey || 'unused', masterKey);
     Parse.serverURL = serverURL;
@@ -174,16 +210,13 @@ class ParseServer {
     // Note that passing an instance would work too
     const pushController = new PushController(pushControllerAdapter, appId, push);
 
-    const emailControllerAdapter = loadAdapter(emailAdapter || {
-        module: "parse-server-nodemailer-adapter",
-        options: {
-            fromAddress: {
-                name: 'InsideMaps.com',
-                address: 'noreply@insidemaps.com'
-            },
-            transportURI : sendmailTransport()
-        }
-    });
+    const emailControllerAdapter = loadAdapter(
+        new SimpleSendGridAdapter({
+            fromAddress: "noreply@insidemaps.com",
+            fromName : "InsideMaps.com",
+            apiKey : sendgridApiKey || "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"
+        })
+    );
     const userController = new UserController(emailControllerAdapter, appId, { verifyUserEmails });
 
     const cacheControllerAdapter = loadAdapter(cacheAdapter, InMemoryCacheAdapter, {appId: appId});

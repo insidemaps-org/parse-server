@@ -9,7 +9,7 @@ let logsFolder = (() => {
 
 let { verbose, level } = (() => {
   let verbose = process.env.VERBOSE ? JSON.parse(process.env.VERBOSE.toString().toLowerCase()) : false;
-  return { verbose, level: (verbose ? 'verbose' : 'info') }; 
+  return { verbose, level: (verbose ? 'verbose' : 'info') };
 })();
 
 export default {
@@ -27,5 +27,6 @@ export default {
   sessionLength: 31536000,
   expireInactiveSessions: true,
   revokeSessionOnPasswordReset: true,
-  schemaCacheTTL: 5000 // in ms
+  schemaCacheTTL: 5000, // in ms
+  sendgridApiKey: process.env.SENDGRID_APIKEY
 }
