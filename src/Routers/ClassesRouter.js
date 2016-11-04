@@ -103,7 +103,17 @@ export class ClassesRouter extends PromiseRouter {
   }
 
   handleUpdate(req) {
-    return rest.update(req.config, req.auth, req.params.className, req.params.objectId, req.body, req.info.clientSDK);
+    if(req && req.body && req.body.status && (req.params.className == "demo_Project" || req.params.className === "Project"))
+    {
+        return rest.get(req.config, req.auth, req.params.className, req.params.objectId, {}, req.info.clientSDK)
+          .then((response) => {
+              console.error("[MARKO] Promena statusa projekta ("+response.results[0].status+"->"+req.body.status+") JSON="+JSON.stringify(req.body));
+              debugger;
+              return rest.update(req.config, req.auth, req.params.className, req.params.objectId, req.body, req.info.clientSDK);
+          });
+    }
+    else
+        return rest.update(req.config, req.auth, req.params.className, req.params.objectId, req.body, req.info.clientSDK);
   }
 
   handleDelete(req) {

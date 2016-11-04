@@ -292,6 +292,9 @@ export class MongoStorageAdapter {
 
   // Apply the update to all objects that match the given Parse Query.
   updateObjectsByQuery(className, schema, query, update) {
+    if(className == "Project" || className == "demo_Project")
+        console.error("[MARKO] Azuriranje klase "+className+": QUERY="+JSON.stringify(query)+ " TO_UPDATE="+JSON.stringify(update));
+
     schema = convertParseSchemaToMongoSchema(schema);
     const mongoUpdate = transformUpdate(className, update, schema);
     const mongoWhere = transformWhere(className, query, schema);

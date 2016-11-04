@@ -86,7 +86,7 @@ function del(config, auth, className, objectId, clientSDK) {
       objectId: objectId
     }, options);
   }).then(() => {
-    return triggers.maybeRunTrigger(triggers.Types.afterDelete, auth, inflatedObject, null, config);    
+    return triggers.maybeRunTrigger(triggers.Types.afterDelete, auth, inflatedObject, null, config);
   });
 }
 
@@ -114,6 +114,15 @@ function update(config, auth, className, objectId, restObject, clientSDK) {
     var originalRestObject;
     if (response && response.results && response.results.length) {
       originalRestObject = response.results[0];
+    }
+
+    if(className == "Project" || className == "demo_Project")
+    {
+        var origin = {}
+        for(var i in restObject)
+            origin[i] = originalRestObject[i];
+
+        console.error("[MARKO] Azuriranje klase "+className+" kroz REST API: "+JSON.stringify(origin)+" -> "+JSON.stringify(restObject));
     }
 
     var write = new RestWrite(config, auth, className, {objectId: objectId}, restObject, originalRestObject, clientSDK);
