@@ -157,8 +157,8 @@ RestWrite.prototype.runBeforeTrigger = function() {
   let updatedObject = triggers.inflate(extraData, this.originalData);
   if (this.query && this.query.objectId) {
     // This is an update for existing object.
-    originalObject = triggers.inflate(extraData, this.originalData);
-  }
+    originalObject = triggers.inflate(this.className, this.originalData);
+}
   updatedObject.set(this.sanitizedData());
 
   return Promise.resolve().then(() => {
@@ -251,7 +251,7 @@ RestWrite.prototype.handleAuthDataValidation = function(authData) {
   return Promise.all(validations);
 }
 
-RestWrite.prototype.findUsersWithAuthData = function(authData) {    
+RestWrite.prototype.findUsersWithAuthData = function(authData) {
   let providers = Object.keys(authData);
   let query = providers.reduce((memo, provider) => {
     if (!authData[provider]) {
