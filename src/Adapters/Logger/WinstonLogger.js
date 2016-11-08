@@ -53,6 +53,9 @@ export function configureLogger({
   verbose = defaults.verbose,
   silent = defaults.silent } = {}) {
 
+  if(typeof(verbose) === "string")
+    verbose = JSON.parse(verbose);
+
   if (verbose) {
     logLevel = 'verbose';
   }
