@@ -207,6 +207,8 @@ export function maybeRunTrigger(triggerType, auth, parseObject, originalParseObj
     Parse.applicationId = config.applicationId;
     Parse.javascriptKey = config.javascriptKey || '';
     Parse.masterKey = config.masterKey;
+    Parse.serverURL = config.serverURL;
+    
     // For the afterSuccess / afterDelete
     logTrigger(triggerType, parseObject.className, parseObject.toJSON());
 

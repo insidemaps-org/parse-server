@@ -97,6 +97,7 @@ export class FunctionsRouter extends PromiseRouter {
         Parse.applicationId = req.config.applicationId;
         Parse.javascriptKey = req.config.javascriptKey;
         Parse.masterKey = req.config.masterKey;
+        Parse.serverURL = req.config.serverURL;
         theFunction(request, response);
       });
     } else {
