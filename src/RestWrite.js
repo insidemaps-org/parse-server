@@ -24,11 +24,12 @@ import _         from 'lodash';
 // RestWrite will handle objectId, createdAt, and updatedAt for
 // everything. It also knows to use triggers and special modifications
 // for the _User class.
-function RestWrite(config, auth, className, query, data, originalData, clientSDK) {
+function RestWrite(config, auth, className, query, data, originalData, clientSDK, httpRequest) {
   this.config = config;
   this.auth = auth;
   this.className = className;
   this.clientSDK = clientSDK;
+  this.httpRequest = httpRequest;
   this.storage = {};
   this.runOptions = {};
   if (!query && data.objectId) {
@@ -48,6 +49,7 @@ function RestWrite(config, auth, className, query, data, originalData, clientSDK
   this.data = deepcopy(data);
   // We never change originalData, so we do not need a deep copy
   this.originalData = originalData;
+  this.originalData2 = deepcopy(originalData);
 
   // The timestamp we'll use for this whole operation
   this.updatedAt = Parse._encode(new Date()).iso;
@@ -156,13 +158,14 @@ RestWrite.prototype.runBeforeTrigger = function() {
   let originalObject = null;
   let updatedObject = triggers.inflate(extraData, this.originalData);
   if (this.query && this.query.objectId) {
-    // This is an update for existing object.
-    originalObject = triggers.inflate(this.className, this.originalData);
-}
+      // This is an update for existing object.
+      originalObject = triggers.inflate(this.className, this.originalData);
+      originalObject._originalData = this.originalData;
+  }
   updatedObject.set(this.sanitizedData());
 
   return Promise.resolve().then(() => {
-    return triggers.maybeRunTrigger(triggers.Types.beforeSave, this.auth, updatedObject, originalObject, this.config);
+    return triggers.maybeRunTrigger(triggers.Types.beforeSave, this.auth, updatedObject, originalObject, this.config, this.httpRequest);
   }).then((response) => {
     if (response && response.object) {
       this.storage.fieldsChangedByTrigger = _.reduce(response.object, (result, value, key) => {
@@ -881,6 +884,7 @@ RestWrite.prototype.runAfterTrigger = function() {
   let originalObject;
   if (this.query && this.query.objectId) {
     originalObject = triggers.inflate(extraData, this.originalData);
+    originalObject._originalData = this.originalData2;
   }
 
   // Build the inflated object, different from beforeSave, originalData is not empty
@@ -893,7 +897,7 @@ RestWrite.prototype.runAfterTrigger = function() {
   this.config.liveQueryController.onAfterSave(updatedObject.className, updatedObject, originalObject);
 
   // Run afterSave trigger
-  return triggers.maybeRunTrigger(triggers.Types.afterSave, this.auth, updatedObject, originalObject, this.config);
+  return triggers.maybeRunTrigger(triggers.Types.afterSave, this.auth, updatedObject, originalObject, this.config, this.httpRequest);
 };
 
 // A helper to figure out what location this operation happens at.

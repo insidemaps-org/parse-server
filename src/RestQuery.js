@@ -14,13 +14,14 @@ import { default as FilesController } from './Controllers/FilesController';
 //   include
 //   keys
 //   redirectClassNameForKey
-function RestQuery(config, auth, className, restWhere = {}, restOptions = {}, clientSDK) {
+function RestQuery(config, auth, className, restWhere = {}, restOptions = {}, clientSDK, httpRequest) {
 
   this.config = config;
   this.auth = auth;
   this.className = className;
   this.restWhere = restWhere;
   this.clientSDK = clientSDK;
+  this.httpRequest = httpRequest;
   this.response = null;
   this.findOptions = {};
   if (!this.auth.isMaster) {

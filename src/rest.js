@@ -15,21 +15,21 @@ var RestWrite = require('./RestWrite');
 var triggers = require('./triggers');
 
 // Returns a promise for an object with optional keys 'results' and 'count'.
-function find(config, auth, className, restWhere, restOptions, clientSDK) {
+function find(config, auth, className, restWhere, restOptions, clientSDK, httpRequest) {
   enforceRoleSecurity('find', className, auth);
-  let query = new RestQuery(config, auth, className, restWhere, restOptions, clientSDK);
+  let query = new RestQuery(config, auth, className, restWhere, restOptions, clientSDK, httpRequest);
   return query.execute();
 }
 
 // get is just like find but only queries an objectId.
-const get = (config, auth, className, objectId, restOptions, clientSDK) => {
+const get = (config, auth, className, objectId, restOptions, clientSDK, httpRequest) => {
   enforceRoleSecurity('get', className, auth);
-  let query = new RestQuery(config, auth, className, { objectId }, restOptions, clientSDK);
+  let query = new RestQuery(config, auth, className, { objectId }, restOptions, clientSDK, httpRequest);
   return query.execute();
 }
 
 // Returns a promise that doesn't resolve to any useful value.
-function del(config, auth, className, objectId, clientSDK) {
+function del(config, auth, className, objectId, clientSDK, httpRequest) {
   if (typeof objectId !== 'string') {
     throw new Parse.Error(Parse.Error.INVALID_JSON,
                           'bad objectId');
@@ -86,21 +86,21 @@ function del(config, auth, className, objectId, clientSDK) {
       objectId: objectId
     }, options);
   }).then(() => {
-    return triggers.maybeRunTrigger(triggers.Types.afterDelete, auth, inflatedObject, null, config);    
+    return triggers.maybeRunTrigger(triggers.Types.afterDelete, auth, inflatedObject, null, config);
   });
 }
 
 // Returns a promise for a {response, status, location} object.
-function create(config, auth, className, restObject, clientSDK) {
+function create(config, auth, className, restObject, clientSDK, httpRequest) {
   enforceRoleSecurity('create', className, auth);
-  var write = new RestWrite(config, auth, className, null, restObject, null, clientSDK);
+  var write = new RestWrite(config, auth, className, null, restObject, null, clientSDK, httpRequest);
   return write.execute();
 }
 
 // Returns a promise that contains the fields of the update that the
 // REST API is supposed to return.
 // Usually, this is just updatedAt.
-function update(config, auth, className, objectId, restObject, clientSDK) {
+function update(config, auth, className, objectId, restObject, clientSDK, httpRequest) {
   enforceRoleSecurity('update', className, auth);
 
   return Promise.resolve().then(() => {
@@ -116,7 +116,7 @@ function update(config, auth, className, objectId, restObject, clientSDK) {
       originalRestObject = response.results[0];
     }
 
-    var write = new RestWrite(config, auth, className, {objectId: objectId}, restObject, originalRestObject, clientSDK);
+    var write = new RestWrite(config, auth, className, {objectId: objectId}, restObject, originalRestObject, clientSDK, httpRequest);
     return write.execute();
   });
 }
