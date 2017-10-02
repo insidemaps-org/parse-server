@@ -1,20 +1,16 @@
-import path from 'path';
+/* eslint-disable no-console */
 import express from 'express';
-import { ParseServer } from '../index';
-import definitions from './cli-definitions';
-import program from './utils/commander';
-import { mergeWithOptions } from './utils/commander';
-import fs from 'fs';
+import ParseServer from '../index';
+import definitions from './definitions/parse-server';
+import cluster from 'cluster';
+import os from 'os';
+import runner from './utils/runner';
+const path = require("path");
 
-program.loadDefinitions(definitions);
-
-program
-  .usage('[options] <path/to/configuration.json>');
-
-program.on('--help', function(){
+const help = function(){
   console.log('  Get Started guide:');
   console.log('');
-  console.log('    Please have a look at the get started guide!')
+  console.log('    Please have a look at the get started guide!');
   console.log('    https://github.com/ParsePlatform/parse-server/wiki/Parse-Server-Guide');
   console.log('');
   console.log('');
@@ -31,63 +27,123 @@ program.on('--help', function(){
   console.log('    $ parse-server -- --appId APP_ID --masterKey MASTER_KEY --serverURL serverURL');
   console.log('    $ parse-server -- --appId APP_ID --masterKey MASTER_KEY --serverURL serverURL');
   console.log('');
-});
+};
 
-program.parse(process.argv, process.env);
+function startServer(options, callback) {
+  const app = express();
+  if (options.middleware) {
+    let middleware;
+    if (typeof options.middleware == 'function') {
+      middleware = options.middleware;
+    } if (typeof options.middleware == 'string') {
+      middleware = require(path.resolve(process.cwd(), options.middleware));
+    } else {
+      throw "middleware should be a string or a function";
+    }
+    app.use(middleware);
+  }
 
-let options = program.getOptions();
+  const parseServer = new ParseServer(options);
+  const sockets = {};
+  app.use(options.mountPath, parseServer.app);
 
-if (!options.serverURL) {
-  options.serverURL = `http://localhost:${options.port}${options.mountPath}`;
+  const server = app.listen(options.port, options.host, callback);
+  server.on('connection', initializeConnections);
+
+  if (options.startLiveQueryServer || options.liveQueryServerOptions) {
+    let liveQueryServer = server;
+    if (options.liveQueryPort) {
+      liveQueryServer = express().listen(options.liveQueryPort, () => {
+        console.log('ParseLiveQuery listening on ' + options.liveQueryPort);
+      });
+    }
+    ParseServer.createLiveQueryServer(liveQueryServer, options.liveQueryServerOptions);
+  }
+
+  function initializeConnections(socket) {
+    /* Currently, express doesn't shut down immediately after receiving SIGINT/SIGTERM if it has client connections that haven't timed out. (This is a known issue with node - https://github.com/nodejs/node/issues/2642)
+
+      This function, along with `destroyAliveConnections()`, intend to fix this behavior such that parse server will close all open connections and initiate the shutdown process as soon as it receives a SIGINT/SIGTERM signal. */
+
+    const socketId = socket.remoteAddress + ':' + socket.remotePort;
+    sockets[socketId] = socket;
+
+    socket.on('close', () => {
+      delete sockets[socketId];
+    });
+  }
+
+  function destroyAliveConnections() {
+    for (const socketId in sockets) {
+      try {
+        sockets[socketId].destroy();
+      } catch (e) { /* */ }
+    }
+  }
+
+  const handleShutdown = function() {
+    console.log('Termination signal received. Shutting down.');
+    destroyAliveConnections();
+    server.close();
+    parseServer.handleShutdown();
+  };
+  process.on('SIGTERM', handleShutdown);
+  process.on('SIGINT', handleShutdown);
 }
 
-if (!options.appId || !options.masterKey || !options.serverURL) {
-  program.outputHelp();
-  console.error("");
-  console.error('\u001b[31mERROR: appId and masterKey are required\u001b[0m');
-  console.error("");
-  process.exit(1);
-}
 
-const app = express();
-const api = new ParseServer(options);
-app.use(options.mountPath, api);
-
-var server = app.listen(options.port, function() {
-
-  for (let key in options) {
-    let value = options[key];
-    if (key == "masterKey") {
-      value = "***REDACTED***";
+runner({
+  definitions,
+  help,
+  usage: '[options] <path/to/configuration.json>',
+  start: function(program, options, logOptions) {
+    if (!options.serverURL) {
+      options.serverURL = `http://localhost:${options.port}${options.mountPath}`;
     }
 
-    if(typeof(value) === "object")
-        value = JSON.stringify(value);
+    if (!options.appId || !options.masterKey || !options.serverURL) {
+      program.outputHelp();
+      console.error("");
+      console.error('\u001b[31mERROR: appId and masterKey are required\u001b[0m');
+      console.error("");
+      process.exit(1);
+    }
 
-    console.log(`${key}: ${value}`);
+    if (options["liveQuery.classNames"]) {
+      options.liveQuery = options.liveQuery || {};
+      options.liveQuery.classNames = options["liveQuery.classNames"];
+      delete options["liveQuery.classNames"];
+    }
+    if (options["liveQuery.redisURL"]) {
+      options.liveQuery = options.liveQuery || {};
+      options.liveQuery.redisURL = options["liveQuery.redisURL"];
+      delete options["liveQuery.redisURL"];
+    }
+
+    if (options.cluster) {
+      const numCPUs = typeof options.cluster === 'number' ? options.cluster : os.cpus().length;
+      if (cluster.isMaster) {
+        logOptions();
+        for(let i = 0; i < numCPUs; i++) {
+          cluster.fork();
+        }
+        cluster.on('exit', (worker, code) => {
+          console.log(`worker ${worker.process.pid} died (${code})... Restarting`);
+          cluster.fork();
+        });
+      } else {
+        startServer(options, () => {
+          console.log('[' + process.pid + '] InsideMaps parse-server cluster running on ' + options.serverURL);
+        });
+      }
+    } else {
+      startServer(options, () => {
+        logOptions();
+        console.log('');
+        console.log('[' + process.pid + '] InsideMaps parse-server running on ' + options.serverURL);
+      });
+    }
   }
-
-
-  try
-  {
-      let revision = null;
-      revision = fs.readFileSync(__dirname+"/../ParseServerRevision.txt");      
-      console.log('revision: '+revision);
-  }
-  catch (e)
-  {console.error(e)}
-
-  console.log('');
-  console.log('InsideMaps parse-server running...');
-
-
 });
 
-var handleShutdown = function() {
-  console.log('Termination signal received. Shutting down.');
-  server.close(function () {
-    process.exit(0);
-  });
-};
-process.on('SIGTERM', handleShutdown);
-process.on('SIGINT', handleShutdown);
+/* eslint-enable no-console */

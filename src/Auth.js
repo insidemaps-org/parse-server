@@ -1,4 +1,3 @@
-var deepcopy = require('deepcopy');
 var Parse = require('parse/node').Parse;
 var RestQuery = require('./RestQuery');
 
@@ -45,7 +44,7 @@ function nobody(config) {
 var getAuthForSessionToken = function({ config, sessionToken, installationId } = {}) {
   return config.cacheController.user.get(sessionToken).then((userJSON) => {
     if (userJSON) {
-      let cachedUser = Parse.Object.fromJSON(userJSON);
+      const cachedUser = Parse.Object.fromJSON(userJSON);
       return Promise.resolve(new Auth({config, isMaster: false, installationId, user: cachedUser}));
     }
 
@@ -72,11 +71,28 @@ var getAuthForSessionToken = function({ config, sessionToken, installationId } =
       obj['className'] = '_User';
       obj['sessionToken'] = sessionToken;
       config.cacheController.user.put(sessionToken, obj);
-      let userObject = Parse.Object.fromJSON(obj);
+      const userObject = Parse.Object.fromJSON(obj);
       return new Auth({config, isMaster: false, installationId, user: userObject});
     });
   });
 };
+
+var getAuthForLegacySessionToken = function({config, sessionToken, installationId } = {}) {
+  var restOptions = {
+    limit: 1
+  };
+  var query = new RestQuery(config, master(config), '_User', { sessionToken: sessionToken}, restOptions);
+  return query.execute().then((response) => {
+    var results = response.results;
+    if (results.length !== 1) {
+      throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid legacy session token');
+    }
+    const obj = results[0];
+    obj.className = '_User';
+    const userObject = Parse.Object.fromJSON(obj);
+    return new Auth({config, isMaster: false, installationId, user: userObject});
+  });
+}
 
 // Returns a promise that resolves to an array of role names
 Auth.prototype.getUserRoles = function() {
@@ -119,7 +135,7 @@ Auth.prototype._loadRoles = function() {
         this.fetchedRoles = true;
         this.rolePromise = null;
 
-        cacheAdapter.role.put(this.user.id, this.userRoles);
+        cacheAdapter.role.put(this.user.id, Array(...this.userRoles));
         return Promise.resolve(this.userRoles);
       }
       var rolesMap = results.reduce((m, r) => {
@@ -136,8 +152,7 @@ Auth.prototype._loadRoles = function() {
           });
           this.fetchedRoles = true;
           this.rolePromise = null;
-
-          cacheAdapter.role.put(this.user.id, this.userRoles);
+          cacheAdapter.role.put(this.user.id, Array(...this.userRoles));
           return Promise.resolve(this.userRoles);
         });
     });
@@ -146,7 +161,7 @@ Auth.prototype._loadRoles = function() {
 
 // Given a list of roleIds, find all the parent roles, returns a promise with all names
 Auth.prototype._getAllRolesNamesForRoleIds = function(roleIDs, names = [], queriedRoles = {}) {
-  let ins = roleIDs.filter((roleID) => {
+  const ins = roleIDs.filter((roleID) => {
     return queriedRoles[roleID] !== true;
   }).map((roleID) => {
     // mark as queried
@@ -169,7 +184,7 @@ Auth.prototype._getAllRolesNamesForRoleIds = function(roleIDs, names = [], queri
   } else {
     restWhere = { 'roles': { '$in': ins }}
   }
-  let query = new RestQuery(this.config, master(this.config), '_Role', restWhere, {});
+  const query = new RestQuery(this.config, master(this.config), '_Role', restWhere, {});
   return query.execute().then((response) => {
     var results = response.results;
     // Nothing found
@@ -177,7 +192,7 @@ Auth.prototype._getAllRolesNamesForRoleIds = function(roleIDs, names = [], queri
       return Promise.resolve(names);
     }
     // Map the results with all Ids and names
-    let resultMap = results.reduce((memo, role) => {
+    const resultMap = results.reduce((memo, role) => {
       memo.names.push(role.name);
       memo.ids.push(role.objectId);
       return memo;
@@ -195,5 +210,6 @@ module.exports = {
   Auth: Auth,
   master: master,
   nobody: nobody,
-  getAuthForSessionToken: getAuthForSessionToken
+  getAuthForSessionToken,
+  getAuthForLegacySessionToken
 };

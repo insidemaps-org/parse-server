@@ -1,15 +1,19 @@
-let logsFolder = (() => {
+import {nullParser} from './cli/utils/parsers';
+
+const logsFolder = (() => {
   let folder = './logs/';
-  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+  if (typeof process !== 'undefined' && process.env.TESTING === '1') {
     folder = './test_logs/'
   }
-  folder = process.env.PARSE_SERVER_LOGS_FOLDER || folder;
+  if (process.env.PARSE_SERVER_LOGS_FOLDER) {
+    folder = nullParser(process.env.PARSE_SERVER_LOGS_FOLDER);
+  }
   return folder;
 })();
 
-let { verbose, level } = (() => {
-  let verbose = process.env.VERBOSE ? JSON.parse(process.env.VERBOSE.toString().toLowerCase()) : false;
-  return { verbose, level: (verbose ? 'verbose' : 'info') };
+const { verbose, level } = (() => {
+  const verbose = process.env.VERBOSE ? true : false;
+  return { verbose, level: verbose ? 'verbose' : undefined }
 })();
 
 export default {
@@ -29,4 +33,9 @@ export default {
   revokeSessionOnPasswordReset: true,
   schemaCacheTTL: 5000, // in ms
   sendgridApiKey: process.env.SENDGRID_APIKEY
+  cacheTTL: 5000,
+  cacheMaxSize: 10000,
+  userSensitiveFields: ['email'],
+  objectIdSize: 10,
+  masterKeyIps: []
 }

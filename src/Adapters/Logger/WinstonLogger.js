@@ -9,25 +9,24 @@ const logger = new winston.Logger();
 const additionalTransports = [];
 
 function updateTransports(options) {
-  let transports = Object.assign({}, logger.transports);
+  const transports = Object.assign({}, logger.transports);
   if (options) {
-    let silent = options.silent;
+    const silent = options.silent;
     delete options.silent;
     if (_.isNull(options.dirname)) {
       delete transports['parse-server'];
       delete transports['parse-server-error'];
     } else if (!_.isUndefined(options.dirname)) {
       transports['parse-server'] = new (DailyRotateFile)(
-        Object.assign({
+        Object.assign({}, {
           filename: 'parse-server.info',
           name: 'parse-server',
-        }, options));
+        }, options, { timestamp: true }));
       transports['parse-server-error'] = new (DailyRotateFile)(
-        Object.assign({
+        Object.assign({}, {
           filename: 'parse-server.err',
           name: 'parse-server-error',
-          level: 'error'
-        }, options));
+        }, options, { level: 'error', timestamp: true  }));
     }
 
     transports.console = new (winston.transports.Console)(
@@ -38,7 +37,7 @@ function updateTransports(options) {
       }, options));
   }
   // Mount the additional transports
-  additionalTransports.forEach((transport) => {
+  additionalTransports.forEach((transport) => {
     transports[transport.name] = transport;
   });
   logger.configure({
@@ -69,7 +68,7 @@ export function configureLogger({
     }
     try {
       fs.mkdirSync(logsFolder);
-    } catch (exception) {}
+    } catch (e) { /* */ }
   }
   options.dirname = logsFolder;
   options.level = logLevel;
@@ -88,13 +87,13 @@ export function addTransport(transport) {
 }
 
 export function removeTransport(transport) {
-  let transportName = typeof transport == 'string' ? transport : transport.name;
-  let transports = Object.assign({}, logger.transports);
+  const transportName = typeof transport == 'string' ? transport : transport.name;
+  const transports = Object.assign({}, logger.transports);
   delete transports[transportName];
   logger.configure({
     transports: _.values(transports)
   });
-  _.remove(additionalTransports, (transport) => {
+  _.remove(additionalTransports, (transport) => {
     return transport.name === transportName;
   });
 }

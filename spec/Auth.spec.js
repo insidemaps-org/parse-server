@@ -4,7 +4,6 @@ describe('Auth', () => {
   describe('getUserRoles', () => {
     var auth;
     var config;
-    var cacheController;
     var currentRoles = null;
     var currentUserId = 'userId';
 
@@ -51,8 +50,8 @@ describe('Auth', () => {
           expect(roles).toEqual(currentRoles);
           return auth.getUserRoles()
         })
-        .then((roles) => auth.getUserRoles())
-        .then((roles) => auth.getUserRoles())
+        .then(() => auth.getUserRoles())
+        .then(() => auth.getUserRoles())
         .then((roles) => {
           // Should only call the cache adapter once.
           expect(config.cacheController.role.get.calls.count()).toEqual(1);
@@ -77,7 +76,18 @@ describe('Auth', () => {
       auth.getUserRoles()
         .then((roles) => expect(roles).toEqual([]))
         .then(() => done());
-    })
+    });
+
+    it('should properly handle bcrypt upgrade', (done) => {
+      var bcryptOriginal = require('bcrypt-nodejs');
+      var bcryptNew = require('bcryptjs');
+      bcryptOriginal.hash('my1Long:password', null, null, function(err, res) {
+        bcryptNew.compare('my1Long:password', res, function(err, res) {
+          expect(res).toBeTruthy();
+          done();
+        })
+      });
+    });
 
   });
 });
