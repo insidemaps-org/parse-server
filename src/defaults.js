@@ -32,7 +32,7 @@ export default {
   expireInactiveSessions: true,
   revokeSessionOnPasswordReset: true,
   schemaCacheTTL: 5000, // in ms
-  sendgridApiKey: process.env.SENDGRID_APIKEY
+  sendgridApiKey: process.env.SENDGRID_APIKEY,
   cacheTTL: 5000,
   cacheMaxSize: 10000,
   userSensitiveFields: ['email'],

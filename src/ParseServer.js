@@ -7,7 +7,7 @@ var batch = require('./batch'),
   Parse = require('parse/node').Parse,
   path = require('path'),
   url = require('url'),
-  authDataManager = require('./Adapters/Auth');
+  authDataManager = require('./Adapters/Auth'),
   sendmailTransport = require('nodemailer-sendmail-transport');
 
 import defaults                 from './defaults';
@@ -146,6 +146,10 @@ class ParseServer {
     schemaCacheTTL = defaults.schemaCacheTTL, // cache for 5s
 
     sendgridApiKey = defaults.sendgridApiKey,
+    cacheTTL = defaults.cacheTTL, // cache for 5s
+    cacheMaxSize = defaults.cacheMaxSize, // 10000
+    enableSingleSchemaCache = false,
+    objectIdSize = defaults.objectIdSize,
     __indexBuildCompletionCallbackForTests = () => {},
   }) {
 
@@ -180,14 +184,6 @@ class ParseServer {
           sendMail: sendMail
       });
   };
-
-    cacheTTL = defaults.cacheTTL, // cache for 5s
-    cacheMaxSize = defaults.cacheMaxSize, // 10000
-    enableSingleSchemaCache = false,
-    objectIdSize = defaults.objectIdSize,
-    __indexBuildCompletionCallbackForTests = () => {},
-  }) {
-
 
     // Initialize the node client SDK automatically
     Parse.initialize(appId, javascriptKey || 'unused', masterKey);

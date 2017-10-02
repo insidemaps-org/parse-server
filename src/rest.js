@@ -123,7 +123,7 @@ function create(config, auth, className, restObject, clientSDK, httpRequest) {
 // Returns a promise that contains the fields of the update that the
 // REST API is supposed to return.
 // Usually, this is just updatedAt.
-function update(config, auth, className, objectId, restObject, clientSDK, httpRequest) {
+function update(config, auth, className, restWhere, restObject, clientSDK, httpRequest) {
   enforceRoleSecurity('update', className, auth);
 
   return Promise.resolve().then(() => {
@@ -139,7 +139,7 @@ function update(config, auth, className, objectId, restObject, clientSDK, httpRe
       originalRestObject = response.results[0];
     }
 
-    var write = new RestWrite(config, auth, className, {objectId: objectId}, restObject, originalRestObject, clientSDK, httpRequest);
+    var write = new RestWrite(config, auth, className, restWhere, restObject, originalRestObject, clientSDK, httpRequest);
     return write.execute();
   });
 }

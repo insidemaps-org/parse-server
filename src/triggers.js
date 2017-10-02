@@ -1,5 +1,5 @@
 // triggers.js
-import Parse    from 'parse/node';
+import Parse from 'parse/node';
 import { logger } from './logger';
 
 export const Types = {
@@ -11,12 +11,12 @@ export const Types = {
   afterFind: 'afterFind'
 };
 
-const baseStore = function() {
+const baseStore = function () {
   const Validators = {};
   const Functions = {};
   const Jobs = {};
   const LiveQuery = [];
-  const Triggers = Object.keys(Types).reduce(function(base, key){
+  const Triggers = Object.keys(Types).reduce(function (base, key) {
     base[key] = {};
     return base;
   }, {});
@@ -31,7 +31,7 @@ const baseStore = function() {
 };
 
 function validateClassNameForTriggers(className, type) {
-  const restrictedClassNames = [ '_Session' ];
+  const restrictedClassNames = ['_Session'];
   if (restrictedClassNames.indexOf(className) != -1) {
     throw `Triggers are not supported for ${className} class.`;
   }
@@ -47,28 +47,28 @@ function validateClassNameForTriggers(className, type) {
 const _triggerStore = {};
 
 export function addFunction(functionName, handler, validationHandler, applicationId) {
-	applicationId = applicationId || Parse.applicationId;
-	_triggerStore[applicationId] =  _triggerStore[applicationId] || baseStore();
-	_triggerStore[applicationId].Functions[functionName] = handler;
-	_triggerStore[applicationId].Validators[functionName] = validationHandler;
+  applicationId = applicationId || Parse.applicationId;
+  _triggerStore[applicationId] = _triggerStore[applicationId] || baseStore();
+  _triggerStore[applicationId].Functions[functionName] = handler;
+  _triggerStore[applicationId].Validators[functionName] = validationHandler;
 }
 
 export function addJob(jobName, handler, applicationId) {
   applicationId = applicationId || Parse.applicationId;
-  _triggerStore[applicationId] =  _triggerStore[applicationId] || baseStore();
+  _triggerStore[applicationId] = _triggerStore[applicationId] || baseStore();
   _triggerStore[applicationId].Jobs[jobName] = handler;
 }
 
 export function addTrigger(type, className, handler, applicationId) {
   validateClassNameForTriggers(className, type);
   applicationId = applicationId || Parse.applicationId;
-  _triggerStore[applicationId] =  _triggerStore[applicationId] || baseStore();
+  _triggerStore[applicationId] = _triggerStore[applicationId] || baseStore();
   _triggerStore[applicationId].Triggers[type][className] = handler;
 }
 
 export function addLiveQueryEventHandler(handler, applicationId) {
   applicationId = applicationId || Parse.applicationId;
-  _triggerStore[applicationId] =  _triggerStore[applicationId] || baseStore();
+  _triggerStore[applicationId] = _triggerStore[applicationId] || baseStore();
   _triggerStore[applicationId].LiveQuery.push(handler);
 }
 
@@ -83,7 +83,7 @@ export function removeTrigger(type, className, applicationId) {
 }
 
 export function _unregisterAll() {
-	Object.keys(_triggerStore).forEach(appId => delete _triggerStore[appId]);
+  Object.keys(_triggerStore).forEach(appId => delete _triggerStore[appId]);
 }
 
 export function getTrigger(className, triggerType, applicationId) {
@@ -101,7 +101,7 @@ export function getTrigger(className, triggerType, applicationId) {
 }
 
 export function triggerExists(className: string, type: string, applicationId: string): boolean {
-	return (getTrigger(className, type, applicationId) != undefined);
+  return (getTrigger(className, type, applicationId) != undefined);
 }
 
 export function getFunction(functionName, applicationId) {
@@ -130,43 +130,90 @@ export function getJobs(applicationId) {
 
 
 export function getValidator(functionName, applicationId) {
-	var manager = _triggerStore[applicationId];
-	if (manager && manager.Validators) {
-		return manager.Validators[functionName];
-	};
-	return undefined;
+  var manager = _triggerStore[applicationId];
+  if (manager && manager.Validators) {
+    return manager.Validators[functionName];
+  };
+  return undefined;
 }
 
 export function getRequestObject(triggerType, auth, parseObject, originalParseObject, config, httpRequest) {
-	var request = {
-		triggerName: triggerType,
-		object: parseObject,
-		master: false,
-		log: config.loggerController,
-		httpRequest: httpRequest,
-		client: {
-			ip:"127.0.0.1",
-			type:"unknown"
-		}
-	};
 
-	//Getting the client IP from the request (must be proxied over Apache2)
-	if(request.httpRequest && request.httpRequest.headers && request.httpRequest.headers["x-forwarded-for"]) {
-		request.client.ip = request.httpRequest.headers["x-forwarded-for"];
-	}
-	else if(request.httpRequest && request.httpRequest.socket) {
-		request.client.ip = request.httpRequest.socket.remoteAddress
-	}
+  // var request = {
+  //   triggerName: triggerType,
+  //   object: parseObject,
+  //   master: false,
+  //   log: config.loggerController,
+  //   headers: config.headers,
+  // };
 
-	//Getting the client type from the request
-	if(request.httpRequest && request.httpRequest.info) {
+  // if (originalParseObject) {
+  //   request.original = originalParseObject;
+  // }
 
-		if(!request.httpRequest.headers) {
-			request.client.type = "parse-server";	//Only parse server can pass fake http request (non IncomingMessage)
-		}
-		else if(request.httpRequest.info.clientVersion && request.httpRequest.info.clientVersion.indexOf("/") !== -1) {
-			request.client.type = request.httpRequest.info.clientVersion.split("/")[0];
-		}
+  // if (!auth) {
+  //   return request;
+  // }
+  // if (auth.isMaster) {
+  //   request['master'] = true;
+  // }
+  // if (auth.user) {
+  //   request['user'] = auth.user;
+  // }
+  // if (auth.installationId) {
+  //   request['installationId'] = auth.installationId;
+  // }
+  // return request;
+
+  var request = {
+    triggerName: triggerType,
+    object: parseObject,
+    master: false,
+    log: config.loggerController,
+    httpRequest: httpRequest,
+    client: {
+      ip: "127.0.0.1",
+      type: "unknown"
+    }
+  };
+
+  //Getting the client IP from the request (must be proxied over Apache2)
+  if (request.httpRequest && request.httpRequest.headers && request.httpRequest.headers["x-forwarded-for"]) {
+    request.client.ip = request.httpRequest.headers["x-forwarded-for"];
+  }
+  else if (request.httpRequest && request.httpRequest.socket) {
+    request.client.ip = request.httpRequest.socket.remoteAddress
+  }
+
+  //Getting the client type from the request
+  if (request.httpRequest && request.httpRequest.info) {
+
+    if (!request.httpRequest.headers) {
+      request.client.type = "parse-server";	//Only parse server can pass fake http request (non IncomingMessage)
+    }
+    else if (request.httpRequest.info.clientVersion && request.httpRequest.info.clientVersion.indexOf("/") !== -1) {
+      request.client.type = request.httpRequest.info.clientVersion.split("/")[0];
+    }
+  }
+
+  if (originalParseObject) {
+    request.original = originalParseObject;
+  }
+
+  if (!auth) {
+    return request;
+  }
+  if (auth.isMaster) {
+    request['master'] = true;
+  }
+  if (auth.user) {
+    request['user'] = auth.user;
+  }
+  if (auth.installationId) {
+    request['installationId'] = auth.installationId;
+  }
+  return request;
+
 }
 
 export function getRequestQueryObject(triggerType, auth, query, count, config, isGet) {
@@ -203,9 +250,9 @@ export function getRequestQueryObject(triggerType, auth, query, count, config, i
 // Any changes made to the object in a beforeSave will be included.
 export function getResponseObject(request, resolve, reject) {
   return {
-    success: function(response) {
+    success: function (response) {
       if (request.triggerName === Types.afterFind) {
-        if(!response){
+        if (!response) {
           response = request.objects;
         }
         response = response.map(object => {
@@ -215,7 +262,7 @@ export function getResponseObject(request, resolve, reject) {
       }
       // Use the JSON response
       if (response && !request.object.equals(response)
-          && request.triggerName === Types.beforeSave) {
+        && request.triggerName === Types.beforeSave) {
         return resolve(response);
       }
       response = {};
@@ -224,7 +271,7 @@ export function getResponseObject(request, resolve, reject) {
       }
       return resolve(response);
     },
-    error: function(code, message) {
+    error: function (code, message) {
       if (!message) {
         message = code;
         code = Parse.Error.SCRIPT_FAILED;
@@ -291,9 +338,9 @@ export function maybeRunAfterFindTrigger(triggerType, auth, className, objects, 
     const triggerPromise = trigger(request, response);
     if (triggerPromise && typeof triggerPromise.then === "function") {
       return triggerPromise.then(promiseResults => {
-        if(promiseResults) {
+        if (promiseResults) {
           resolve(promiseResults);
-        }else{
+        } else {
           return reject(new Parse.Error(Parse.Error.SCRIPT_FAILED, "AfterFind expect results to be returned in the promise"));
         }
       });
@@ -389,54 +436,53 @@ export function maybeRunQueryTrigger(triggerType, className, restWhere, restOpti
 // trigger will set the object key to the rest format object to save.
 // originalParseObject is optional, we only need that for befote/afterSave functions
 export function maybeRunTrigger(triggerType, auth, parseObject, originalParseObject, config, httpRequest) {
-	if (!parseObject) {
-		return Promise.resolve({});
-	}
-	return new Promise(function (resolve, reject) {
-		var trigger = getTrigger(parseObject.className, triggerType, config.applicationId);
-		if (!trigger) return resolve();
-		var request = getRequestObject(triggerType, auth, parseObject, originalParseObject, config, httpRequest);
+  if (!parseObject) {
+    return Promise.resolve({});
+  }
+  return new Promise(function (resolve, reject) {
+    var trigger = getTrigger(parseObject.className, triggerType, config.applicationId);
+    if (!trigger) return resolve();
+    var request = getRequestObject(triggerType, auth, parseObject, originalParseObject, config, httpRequest);
 
-		var response = getResponseObject(request, (object) => {
-			logTriggerSuccessBeforeHook(triggerType, parseObject.className, parseObject.toJSON(), object, auth);
-			resolve(object);
-		}, (error) => {
+    var response = getResponseObject(request, (object) =>  {
+      logTriggerSuccessBeforeHook(triggerType, parseObject.className, parseObject.toJSON(), object, auth);
+      resolve(object);
+    }, (error) =>  {
       logTriggerErrorBeforeHook(
-			triggerType, parseObject.className, parseObject.toJSON(), auth, error);
-			reject(error);
-		});
-		// Force the current Parse app before the trigger
-		Parse.applicationId = config.applicationId;
-		Parse.javascriptKey = config.javascriptKey || '';
-		Parse.masterKey = config.masterKey;
-		Parse.serverURL = config.serverURL;
+        triggerType, parseObject.className, parseObject.toJSON(), auth, error);
+      reject(error);
+    });
+    // Force the current Parse app before the trigger
+    Parse.applicationId = config.applicationId;
+    Parse.javascriptKey = config.javascriptKey || '';
+    Parse.masterKey = config.masterKey;
+    Parse.serverURL = config.serverURL;
 
-	
-		//AfterSave and afterDelete triggers can return a promise, which if they do, needs to be resolved before this promise is resolved,
-		//so trigger execution is synced with RestWrite.execute() call.
-		//If triggers do not return a promise, they can run async code parallel to the RestWrite.execute() call.
-		var triggerPromise = trigger(request, response);
-		if(triggerType === Types.afterSave || triggerType === Types.afterDelete)
-		{
-      			logTriggerAfterHook(triggerType, parseObject.className, parseObject.toJSON(), auth);
-				if(triggerPromise && typeof triggerPromise.then === "function") {
-						return triggerPromise.then(resolve, resolve);
-				}
-				else {
-						return resolve();
-				}
-		}
-	});
+
+    //AfterSave and afterDelete triggers can return a promise, which if they do, needs to be resolved before this promise is resolved,
+    //so trigger execution is synced with RestWrite.execute() call.
+    //If triggers do not return a promise, they can run async code parallel to the RestWrite.execute() call.
+    var triggerPromise = trigger(request, response);
+    if (triggerType === Types.afterSave || triggerType === Types.afterDelete) {
+      logTriggerAfterHook(triggerType, parseObject.className, parseObject.toJSON(), auth);
+      if (triggerPromise && typeof triggerPromise.then === "function") {
+        return triggerPromise.then(resolve, resolve);
+      }
+      else {
+        return resolve();
+      }
+    }
+  });
 };
 
 // Converts a REST-format object to a Parse.Object
 // data is either className or an object
 export function inflate(data, restObject) {
-	var copy = typeof data == 'object' ? data : {className: data};
-	for (var key in restObject) {
-		copy[key] = restObject[key];
-	}
-	return Parse.Object.fromJSON(copy);
+  var copy = typeof data == 'object' ? data : { className: data };
+  for (var key in restObject) {
+    copy[key] = restObject[key];
+  }
+  return Parse.Object.fromJSON(copy);
 }
 
 export function runLiveQueryEventHandlers(data, applicationId = Parse.applicationId) {
