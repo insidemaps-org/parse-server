@@ -18,39 +18,33 @@ function parseURL(URL) {
   return undefined;
 }
 
-function makeBatchRoutingPathFunction(originalUrl, serverURL, publicServerURL) {
-  serverURL = serverURL ? parseURL(serverURL) : undefined;
-  publicServerURL = publicServerURL ? parseURL(publicServerURL) : undefined;
+function makeBatchRoutingPathFunction(originalUrl, rawServerURL, rawPublicServerURL) {
 
-  const apiPrefixLength = originalUrl.length - batchPath.length;
-  let apiPrefix = originalUrl.slice(0, apiPrefixLength);
+  const serverURL = rawServerURL ? parseURL(rawServerURL) : parseURL("/1");
+  const publicServerURL = rawPublicServerURL ? parseURL(rawPublicServerURL) : parseURL("/1");
 
-  const makeRoutablePath = function(requestPath) {
-    // The routablePath is the path minus the api prefix
-    if (requestPath.slice(0, apiPrefix.length) != apiPrefix) {
-      throw new Parse.Error(
-        Parse.Error.INVALID_JSON,
-        'cannot route batch path ' + requestPath);
+  return function (requestPath) {
+    const apiPrefix = serverURL.path;
+
+    if (!requestPath) {
+      throw new Parse.Error(Parse.Error.INVALID_JSON, 'Batch request is missing requestPath.');
     }
-    return path.posix.join('/', requestPath.slice(apiPrefix.length));
-  }
-
-  if (serverURL && publicServerURL
-        && (serverURL.path != publicServerURL.path)) {
-    const localPath = serverURL.path;
-    const publicPath = publicServerURL.path;
-    // Override the api prefix
-    apiPrefix = localPath;
-    return function(requestPath) {
-      // Build the new path by removing the public path
-      // and joining with the local path
-      const newPath = path.posix.join('/', localPath, '/' , requestPath.slice(publicPath.length));
-      // Use the method for local routing
-      return makeRoutablePath(newPath);
+    else if(requestPath.indexOf(apiPrefix) == -1){
+      throw new Parse.Error(Parse.Error.INVALID_JSON, 'Batch request issued to wrong API version. Bad URL: '+requestPath+', expected api prefix: '+apiPrefix);
     }
-  }
 
-  return makeRoutablePath;
+    //Support for URLs:
+    //  - /1/classes/Class
+    //  - https://test.insidemaps.com/parse/1/classes/Class
+    //  - http://127.0.0.1:1337/1/classes/Class
+    if(requestPath.indexOf(apiPrefix) !== -1) {
+      const parts = requestPath.split(apiPrefix);
+      if(parts && parts.length == 2)
+        return parts[1];
+    }
+    else
+      throw new Parse.Error(Parse.Error.INVALID_JSON, 'cannot route batch path: ' + requestPath);
+  }
 }
 
 // Returns a promise for a {response} object.
@@ -83,14 +77,14 @@ function handleBatch(router, req) {
     };
 
     return router.tryRouteRequest(restRequest.method, routablePath, request).then((response) => {
-      return {success: response.response};
+      return { success: response.response };
     }, (error) => {
-      return {error: {code: error.code, error: error.message}};
+      return { error: { code: error.code, error: error.message } };
     });
   });
 
   return Promise.all(promises).then((results) => {
-    return {response: results};
+    return { response: results };
   });
 }
 
