@@ -191,7 +191,7 @@ export default {
     action: function(data){
       return JSON.parse(data);
     },
-    default: ["email"]
+    default: []
   },
   "sessionLength": {
     env: "PARSE_SERVER_SESSION_LENGTH",
