@@ -186,7 +186,11 @@ export default {
     default: "20mb"
   },
   "userSensitiveFields": {
+    env: "PARSE_SERVER_USER_SENSITIVE_FIELDS",
     help: "Personally identifiable information fields in the user table the should be removed for non-authorized users.",
+    action: function(data){
+      return JSON.parse(data);
+    },
     default: ["email"]
   },
   "sessionLength": {
