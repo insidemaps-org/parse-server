@@ -35,7 +35,7 @@ export default {
   sendgridApiKey: process.env.SENDGRID_APIKEY,
   cacheTTL: 5000,
   cacheMaxSize: 10000,
-  userSensitiveFields: ['email'],
+  userSensitiveFields: [],
   objectIdSize: 10,
   masterKeyIps: []
 }
