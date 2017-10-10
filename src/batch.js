@@ -32,18 +32,13 @@ function makeBatchRoutingPathFunction(originalUrl, rawServerURL, rawPublicServer
     else if(requestPath.indexOf(apiPrefix) == -1){
       throw new Parse.Error(Parse.Error.INVALID_JSON, 'Batch request issued to wrong API version. Bad URL: '+requestPath+', expected api prefix: '+apiPrefix);
     }
-
-    //Support for URLs:
-    //  - /1/classes/Class
-    //  - https://test.insidemaps.com/parse/1/classes/Class
-    //  - http://127.0.0.1:1337/1/classes/Class
-    if(requestPath.indexOf(apiPrefix) !== -1) {
-      const parts = requestPath.split(apiPrefix);
-      if(parts && parts.length == 2)
-        return parts[1];
+    else {
+      //Support for URLs:
+      //  - /1/classes/Class
+      //  - https://test.insidemaps.com/parse/1/classes/Class
+      //  - http://127.0.0.1:1337/1/classes/Class
+      return requestPath.substring(requestPath.indexOf(apiPrefix)+apiPrefix.length);
     }
-    else
-      throw new Parse.Error(Parse.Error.INVALID_JSON, 'cannot route batch path: ' + requestPath);
   }
 }
 
