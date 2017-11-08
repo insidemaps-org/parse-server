@@ -57,14 +57,14 @@ var getAuthForSessionToken = function({ config, sessionToken, installationId } =
     return query.execute().then((response) => {
       var results = response.results;
       if (results.length !== 1 || !results[0]['user']) {
-        throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token');
+        throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token: '+sessionToken);
       }
 
       var now = new Date(),
         expiresAt = results[0].expiresAt ? new Date(results[0].expiresAt.iso) : undefined;
       if (expiresAt < now) {
         throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN,
-          'Session token is expired.');
+          'Session token is expired. '+sessionToken);
       }
       var obj = results[0]['user'];
       delete obj.password;

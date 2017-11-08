@@ -373,22 +373,6 @@ RestWrite.prototype.transformUser = function() {
     throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, error);
   }
 
-  // Do not cleanup session if objectId is not set
-  if (this.query && this.objectId()) {
-    // If we're updating a _User object, we need to clear out the cache for that user. Find all their
-    // session tokens, and remove them from the cache.
-    promise = new RestQuery(this.config, Auth.master(this.config), '_Session', {
-      user: {
-        __type: "Pointer",
-        className: "_User",
-        objectId: this.objectId(),
-      }
-    }).execute()
-      .then(results => {
-        results.results.forEach(session => this.config.cacheController.user.del(session.sessionToken));
-      });
-  }
-
   return promise.then(() => {
     // Transform the password
     if (this.data.password === undefined) { // ignore only if undefined. should proceed if empty ('')
@@ -586,16 +570,6 @@ RestWrite.prototype.createSessionToken = function() {
     this.response.response.sessionToken = token;
   }
 
-  // Destroy the sessions in 'Background'
-  this.config.database.destroy('_Session', {
-    user: {
-      __type: 'Pointer',
-      className: '_User',
-      objectId: this.objectId()
-    },
-    installationId: this.auth.installationId,
-    sessionToken: { '$ne': token },
-  });
   return new RestWrite(this.config, Auth.master(this.config), '_Session', null, sessionData).execute();
 }
 
