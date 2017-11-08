@@ -18,7 +18,7 @@ export class UsersRouter extends ClassesRouter {
 
   handleMe(req) {
     if (!req.info || !req.info.sessionToken) {
-      throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token');
+      throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token: NONE');
     }
     const sessionToken = req.info.sessionToken;
     return rest.find(req.config, Auth.master(req.config), '_Session',
@@ -28,7 +28,7 @@ export class UsersRouter extends ClassesRouter {
         if (!response.results ||
           response.results.length == 0 ||
           !response.results[0].user) {
-          throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token');
+          throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token: '+sessionToken);
         } else {
           const user = response.results[0].user;
           // Send token back on the login, because SDKs expect that.
@@ -223,7 +223,7 @@ export class UsersRouter extends ClassesRouter {
   handleRevokeEmailVerification(req) {
 
       if (!req.info || !req.info.sessionToken) {
-        throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token');
+        throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token: NONE');
       }
 
       let sessionToken = req.info.sessionToken;
@@ -235,7 +235,7 @@ export class UsersRouter extends ClassesRouter {
           if (!response.results ||
             response.results.length == 0 ||
             !response.results[0].user) {
-            throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token');
+            throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token: '+sessionToken);
           }
           else
           {
@@ -243,7 +243,7 @@ export class UsersRouter extends ClassesRouter {
 
             //Make sure that sessionToken belongs to the /:objectId/ user
             if(user.objectId !== req.params.objectId)
-              throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token');
+              throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token: '+sessionToken);
             else
               return user;
           }
