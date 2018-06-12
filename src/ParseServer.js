@@ -146,7 +146,8 @@ class ParseServer {
     schemaCacheTTL = defaults.schemaCacheTTL, // cache for 5s
 
     sendgridApiKey = defaults.sendgridApiKey,
-    cacheTTL = defaults.cacheTTL, // cache for 5s
+	cacheTTL = defaults.cacheTTL, // cache for 5s
+	enableAppMetrics = defaults.enableAppMetrics,
     cacheMaxSize = defaults.cacheMaxSize, // 10000
     enableSingleSchemaCache = false,
     objectIdSize = defaults.objectIdSize,
@@ -319,7 +320,8 @@ class ParseServer {
       pushControllerQueue,
       hasPushSupport,
       hasPushScheduledSupport,
-      objectIdSize
+	  objectIdSize,
+	  enableAppMetrics
     });
 
     Config.validate(AppCache.get(appId));

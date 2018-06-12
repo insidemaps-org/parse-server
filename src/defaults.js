@@ -37,5 +37,6 @@ export default {
   cacheMaxSize: 10000,
   userSensitiveFields: [],
   objectIdSize: 10,
-  masterKeyIps: []
+  masterKeyIps: [],
+  enableAppmetrics: null
 }

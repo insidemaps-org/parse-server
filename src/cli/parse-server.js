@@ -1,4 +1,15 @@
 /* eslint-disable no-console */
+
+if(process.argv){
+	for(var i in process.argv){
+		if(process.argv[i].startsWith("--enableAppMetrics")){
+			var port = parseInt(process.argv[i].split("=")[1]);
+			console.warn("[WARNING] Enabling appmetrics dashboard on port :"+port);
+			require("appmetrics-dash").monitor({title:"Parse-Server", port:port});
+		}
+	}
+}
+
 import express from 'express';
 import ParseServer from '../index';
 import definitions from './definitions/parse-server';

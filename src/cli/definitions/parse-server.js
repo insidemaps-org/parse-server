@@ -279,5 +279,10 @@ export default {
     env: "PARSE_SERVER_OBJECT_ID_SIZE",
     help: "Sets the number of characters in generated object id's, default 10",
     action: numberParser("objectIdSize")
+  },
+  "enableAppMetrics": {
+    env: "PARSE_SERVER_ENABLE_APPMETRICS",
+    help: "Enables the appmetrics dashboard on the port you pass as a value to this param.",
+    action: numberParser("enableAppMetrics")
   }
 };
