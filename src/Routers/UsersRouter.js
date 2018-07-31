@@ -74,7 +74,11 @@ export class UsersRouter extends ClassesRouter {
         if (!results.length) {
           throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND, 'Invalid username/password.');
         }
-        user = results[0];
+		user = results[0];
+
+		if(user.disabled){
+			throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND, 'Invalid username/password (disabled).');
+		}
 
         if (req.config.verifyUserEmails && req.config.preventLoginWithUnverifiedEmail && !user.emailVerified) {
           throw new Parse.Error(Parse.Error.EMAIL_NOT_FOUND, 'User email is not verified.');
