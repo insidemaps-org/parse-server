@@ -18,7 +18,7 @@ function removeTrailingSlash(str) {
 }
 
 export class Config {
-  constructor(applicationId: string, mount: string) {
+  constructor(applicationId, mount) {
     const cacheInfo = AppCache.get(applicationId);
     if (!cacheInfo) {
       return;
@@ -75,7 +75,8 @@ export class Config {
     this.generateSessionExpiresAt = this.generateSessionExpiresAt.bind(this);
     this.generateEmailVerifyTokenExpiresAt = this.generateEmailVerifyTokenExpiresAt.bind(this);
     this.revokeSessionOnPasswordReset = cacheInfo.revokeSessionOnPasswordReset;
-    this.objectIdSize = cacheInfo.objectIdSize;
+	this.objectIdSize = cacheInfo.objectIdSize;
+	this.autoVerifyEmailsIfMatch = cacheInfo.autoVerifyEmailsIfMatch || {};
   }
 
   static validate({
@@ -283,6 +284,7 @@ export class Config {
   get verifyEmailURL() {
     return `${this.publicServerURL}/apps/${this.applicationId}/verify_email`;
   }
+
 }
 
 export default Config;

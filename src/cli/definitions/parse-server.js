@@ -279,5 +279,13 @@ export default {
     env: "PARSE_SERVER_OBJECT_ID_SIZE",
     help: "Sets the number of characters in generated object id's, default 10",
     action: numberParser("objectIdSize")
-  }
+  },
+  "autoVerifyEmailsIfMatch": {
+    env: "AUTO_VERIFY_EMAILS_IF_MATCH",
+    help: "Match regex on user fields, and if any matches, user email is verified automatically.",
+    action: function(data){
+	  return JSON.parse(data);
+    },
+    default: {}
+  },
 };

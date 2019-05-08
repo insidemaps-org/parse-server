@@ -373,6 +373,19 @@ RestWrite.prototype.transformUser = function() {
     throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, error);
   }
 
+  let automaticEmailVerification = false;
+
+  for(let field in this.config.autoVerifyEmailsIfMatch){
+    if(this.data[field].match(new RegExp(this.config.autoVerifyEmailsIfMatch[field]))){
+	  automaticEmailVerification = true;
+	  break;
+	}
+  }
+
+  if(automaticEmailVerification === true)
+	this.data.emailVerified = true;
+
+
   return promise.then(() => {
     // Transform the password
     if (this.data.password === undefined) { // ignore only if undefined. should proceed if empty ('')

@@ -32,12 +32,14 @@ export class UserController extends AdaptableController {
 
   setEmailVerifyToken(user) {
     if (this.shouldVerifyEmails) {
-      user._email_verify_token = randomString(25);
-      user.emailVerified = false;
+	  user.emailVerified = this.shouldAutoVerifyEmail(user);
+	  if(!user.emailVerified){
+		  user._email_verify_token = randomString(25);
 
-      if (this.config.emailVerifyTokenValidityDuration) {
-        user._email_verify_token_expires_at = Parse._encode(this.config.generateEmailVerifyTokenExpiresAt());
-      }
+		  if (this.config.emailVerifyTokenValidityDuration) {
+			user._email_verify_token_expires_at = Parse._encode(this.config.generateEmailVerifyTokenExpiresAt());
+		  }
+	  }
     }
   }
 
@@ -112,8 +114,20 @@ export class UserController extends AdaptableController {
     })
   }
 
+  shouldAutoVerifyEmail(user){
+	  for (let field in this.config.autoVerifyEmailsIfMatch) {
+		if (user[field] && user[field].match(new RegExp(this.config.autoVerifyEmailsIfMatch[field]))) {
+			return true;
+		}
+	  }
+
+	  return false;
+  }
+
   sendVerificationEmail(user) {
-    if (!this.shouldVerifyEmails) {
+	let sendVerificationEmail = this.shouldVerifyEmails && !this.shouldAutoVerifyEmail(user);
+
+    if (!sendVerificationEmail) {
       return;
     }
     const token = encodeURIComponent(user._email_verify_token);

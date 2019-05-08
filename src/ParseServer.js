@@ -149,7 +149,8 @@ class ParseServer {
     cacheTTL = defaults.cacheTTL, // cache for 5s
     cacheMaxSize = defaults.cacheMaxSize, // 10000
     enableSingleSchemaCache = false,
-    objectIdSize = defaults.objectIdSize,
+	objectIdSize = defaults.objectIdSize,
+	autoVerifyEmailsIfMatch = defaults.autoVerifyEmailsIfMatch,
     __indexBuildCompletionCallbackForTests = () => {},
   }) {
 
@@ -319,7 +320,8 @@ class ParseServer {
       pushControllerQueue,
       hasPushSupport,
       hasPushScheduledSupport,
-      objectIdSize
+	  objectIdSize,
+	  autoVerifyEmailsIfMatch:autoVerifyEmailsIfMatch
     });
 
     Config.validate(AppCache.get(appId));
