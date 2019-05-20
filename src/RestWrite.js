@@ -376,7 +376,7 @@ RestWrite.prototype.transformUser = function() {
   let automaticEmailVerification = false;
 
   for(let field in this.config.autoVerifyEmailsIfMatch){
-    if(this.data[field].match(new RegExp(this.config.autoVerifyEmailsIfMatch[field]))){
+    if(this.data[field] && this.data[field].match(new RegExp(this.config.autoVerifyEmailsIfMatch[field]))){
 	  automaticEmailVerification = true;
 	  break;
 	}
