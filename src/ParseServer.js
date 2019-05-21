@@ -150,7 +150,7 @@ class ParseServer {
     cacheMaxSize = defaults.cacheMaxSize, // 10000
     enableSingleSchemaCache = false,
 	objectIdSize = defaults.objectIdSize,
-	autoVerifyEmailsIfMatch = defaults.autoVerifyEmailsIfMatch,
+	autoVerifyEmailsIfMatch = {},
     __indexBuildCompletionCallbackForTests = () => {},
   }) {
 

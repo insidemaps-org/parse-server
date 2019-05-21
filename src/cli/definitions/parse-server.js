@@ -283,7 +283,6 @@ export default {
   "autoVerifyEmailsIfMatch": {
     env: "AUTO_VERIFY_EMAILS_IF_MATCH",
     help: "Match regex on user fields, and if any matches, user email is verified automatically.",
-    action: objectParser,
-    default: {}
+    action: objectParser
   },
 };

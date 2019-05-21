@@ -37,6 +37,5 @@ export default {
   cacheMaxSize: 10000,
   userSensitiveFields: [],
   objectIdSize: 10,
-  masterKeyIps: [],
-  autoVerifyEmailsIfMatch: {}
+  masterKeyIps: []
 }
