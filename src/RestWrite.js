@@ -425,7 +425,7 @@ RestWrite.prototype._validateUserName = function () {
   }
   var usernameCheckParam = this.data.username;
   if (this.data.username.match(/^.+@.+$/)) {
-    usernameCheckParam = { $regex: this.data.username, $options: "i" };
+    usernameCheckParam = { $regex: '^' + this.data.username + '$', $options: "i" };
   }
   // We need to a find to check for duplicate username in case they are missing the unique index on usernames
   // TODO: Check if there is a unique index, and if so, skip this query.
@@ -452,7 +452,7 @@ RestWrite.prototype._validateEmail = function() {
   // Same problem for email as above for username
   return this.config.database.find(
     this.className,
-    {email: { $regex: this.data.email, $options: "i" }, objectId: {'$ne': this.objectId()}},
+    {email: { $regex: '^'+this.data.email+'$', $options: "i" }, objectId: {'$ne': this.objectId()}},
     {limit: 1}
   ).then(results => {
     if (results.length > 0) {
