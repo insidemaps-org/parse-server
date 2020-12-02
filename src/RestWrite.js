@@ -452,7 +452,7 @@ RestWrite.prototype._validateEmail = function() {
   // Same problem for email as above for username
   return this.config.database.find(
     this.className,
-    {email: { $regex: '^'+this.data.email+'$', $options: "i" }, objectId: {'$ne': this.objectId()}},
+    {email: { $regex: '^' + this.data.email + '$', $options: "i" }, objectId: {'$ne': this.objectId()}},
     {limit: 1}
   ).then(results => {
     if (results.length > 0) {
