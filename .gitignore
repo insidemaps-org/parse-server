@@ -52,3 +52,9 @@ lib/
 
 # Folder created by FileSystemAdapter
 /files
+
+# Env variables
+*.env
+
+# Parse-dashboard config
+parse-darshboard-config.json

@@ -1,21 +1,21 @@
-FROM node:boron
+FROM node:14.17.5-slim
 
-RUN mkdir -p /parse-server
-COPY ./ /parse-server/
-
-RUN mkdir -p /parse-server/config
-VOLUME /parse-server/config
-
-RUN mkdir -p /parse-server/cloud
-VOLUME /parse-server/cloud
+COPY --from=api:1.0.0 /var/www/website-v1 /var/www/production
 
 WORKDIR /parse-server
 
-RUN npm install && \
-    npm run build
+COPY . /parse-server/
 
-ENV PORT=1337
+RUN apt-get update \
+&& apt-get install curl -y \ 
+&& npm install npm -g \ 
+&& npm install \
+&& npm run build \
+&& useradd -ms /bin/bash docker \ 
+&& chown -R docker /parse-server
 
-EXPOSE $PORT
+USER docker
 
-ENTRYPOINT ["npm", "start", "--"]
+EXPOSE 1337
+
+ENTRYPOINT ["npm", "start"]
