@@ -1,0 +1,14 @@
+FROM node:14.17.5-slim
+
+WORKDIR /parse-dashboard
+
+RUN apt-get update \
+&& npm install -g parse-dashboard \
+&& useradd -ms /bin/bash docker \ 
+&& chown -R docker /parse-dashboard
+
+EXPOSE 4040
+
+USER docker
+
+ENTRYPOINT ["parse-dashboard"]

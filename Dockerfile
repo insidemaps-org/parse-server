@@ -6,8 +6,7 @@ WORKDIR /parse-server
 
 COPY . /parse-server/
 
-RUN apt-get update \
-&& apt-get install curl -y \ 
+RUN apt-get update \ 
 && npm install npm -g \ 
 && npm install \
 && npm run build \
