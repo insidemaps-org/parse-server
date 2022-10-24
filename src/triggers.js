@@ -137,7 +137,7 @@ export function getValidator(functionName, applicationId) {
   return undefined;
 }
 
-export function getRequestObject(triggerType, auth, parseObject, originalParseObject, config, httpRequest, randomString) {
+export function getRequestObject(triggerType, auth, parseObject, originalParseObject, config, httpRequest, queryId) {
 
   // var request = {
   //   triggerName: triggerType,
@@ -175,7 +175,7 @@ export function getRequestObject(triggerType, auth, parseObject, originalParseOb
       ip: "127.0.0.1",
       type: "unknown"
     },
-    randomString: randomString
+    queryId: queryId
   };
 
   //Getting the client IP from the request (must be proxied over Apache2)
@@ -217,14 +217,7 @@ export function getRequestObject(triggerType, auth, parseObject, originalParseOb
 
 }
 
-function generateRandomString(length) {
-	var chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	var result = "";
-	for (var i = length; i > 0; --i) result += chars[Math.round(Math.random() * (chars.length - 1))];
-	return result;
-}
-
-export function getRequestQueryObject(triggerType, auth, query, count, config, isGet, randomString) {
+export function getRequestQueryObject(triggerType, auth, query, count, config, isGet, queryId) {
   isGet = !!isGet;
 
   var request = {
@@ -235,7 +228,7 @@ export function getRequestQueryObject(triggerType, auth, query, count, config, i
     log: config.loggerController,
     isGet,
     headers: config.headers,
-    randomString: randomString,
+    queryId: queryId,
   };
 
   if (!auth) {
@@ -324,13 +317,13 @@ function logTriggerErrorBeforeHook(triggerType, className, input, auth, error) {
   });
 }
 
-export function maybeRunAfterFindTrigger(triggerType, auth, className, objects, config, randomString) {
+export function maybeRunAfterFindTrigger(triggerType, auth, className, objects, config, queryId) {
   return new Promise((resolve, reject) => {
     const trigger = getTrigger(className, triggerType, config.applicationId);
     if (!trigger) {
       return resolve();
     }
-    const request = getRequestObject(triggerType, auth, null, null, config, null, randomString);
+    const request = getRequestObject(triggerType, auth, null, null, config, null, queryId);
     const response = getResponseObject(request,
       object => {
         resolve(object);
@@ -360,7 +353,7 @@ export function maybeRunAfterFindTrigger(triggerType, auth, className, objects, 
   });
 }
 
-export function maybeRunQueryTrigger(triggerType, className, restWhere, restOptions, config, auth, isGet, randomString) {
+export function maybeRunQueryTrigger(triggerType, className, restWhere, restOptions, config, auth, isGet, queryId) {
   const trigger = getTrigger(className, triggerType, config.applicationId);
   if (!trigger) {
     return Promise.resolve({
@@ -386,7 +379,7 @@ export function maybeRunQueryTrigger(triggerType, className, restWhere, restOpti
     }
     count = !!restOptions.count;
   }
-  const requestObject = getRequestQueryObject(triggerType, auth, parseQuery, count, config, isGet, randomString);
+  const requestObject = getRequestQueryObject(triggerType, auth, parseQuery, count, config, isGet, queryId);
   return Promise.resolve().then(() => {
     return trigger(requestObject);
   }).then((result) => {
@@ -453,12 +446,8 @@ export function maybeRunTrigger(triggerType, auth, parseObject, originalParseObj
     if (!trigger) return resolve();
     var request = getRequestObject(triggerType, auth, parseObject, originalParseObject, config, httpRequest);
 
-    // var randomString = generateRandomString(5);
-    // request.randomString = randomString;
-
     var response = getResponseObject(request, (object) =>  {
       logTriggerSuccessBeforeHook(triggerType, parseObject.className, parseObject.toJSON(), object, auth);
-      // object.randomString = randomString;
       resolve(object);
     }, (error) =>  {
       logTriggerErrorBeforeHook(

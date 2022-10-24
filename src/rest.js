@@ -34,12 +34,12 @@ function generateRandomString(length) {
 // Returns a promise for an object with optional keys 'results' and 'count'.
 function find(config, auth, className, restWhere, restOptions, clientSDK, httpRequest) {
   enforceRoleSecurity('find', className, auth);
-  var randomString = generateRandomString(5);
-  return triggers.maybeRunQueryTrigger(triggers.Types.beforeFind, className, restWhere, restOptions, config, auth, false, randomString).then((result) => {
+  var queryId = generateRandomString(5);
+  return triggers.maybeRunQueryTrigger(triggers.Types.beforeFind, className, restWhere, restOptions, config, auth, false, queryId).then((result) => {
     restWhere = result.restWhere || restWhere;
     restOptions = result.restOptions || restOptions;
     const query = new RestQuery(config, auth, className, restWhere, restOptions, clientSDK, httpRequest);
-    return query.execute(undefined, randomString);
+    return query.execute(undefined, queryId);
   });
 }
 
@@ -47,11 +47,11 @@ function find(config, auth, className, restWhere, restOptions, clientSDK, httpRe
 const get = (config, auth, className, objectId, restOptions, clientSDK, httpRequest) => {
   var restWhere = { objectId };
   enforceRoleSecurity('get', className, auth);
-  return triggers.maybeRunQueryTrigger(triggers.Types.beforeFind, className, restWhere, restOptions, config, auth, true, randomString).then((result) => {
+  return triggers.maybeRunQueryTrigger(triggers.Types.beforeFind, className, restWhere, restOptions, config, auth, true, queryId).then((result) => {
     restWhere = result.restWhere || restWhere;
     restOptions = result.restOptions || restOptions;
     const query = new RestQuery(config, auth, className, restWhere, restOptions, clientSDK, httpRequest);
-    return query.execute(undefined, randomString);
+    return query.execute(undefined, queryId);
   });
 }
 

@@ -145,7 +145,7 @@ function RestQuery(config, auth, className, restWhere = {}, restOptions = {}, cl
 // Returns a promise for the response - an object with optional keys
 // 'results' and 'count'.
 // TODO: consolidate the replaceX functions
-RestQuery.prototype.execute = function(executeOptions, randomString) {
+RestQuery.prototype.execute = function(executeOptions, queryId) {
   return Promise.resolve().then(() => {
     return this.buildRestWhere();
   }).then(() => {
@@ -155,7 +155,7 @@ RestQuery.prototype.execute = function(executeOptions, randomString) {
   }).then(() => {
     return this.handleInclude();
   }).then(() => {
-    return this.runAfterFindTrigger(randomString);
+    return this.runAfterFindTrigger(queryId);
   }).then(() => {
     return this.response;
   });
@@ -574,7 +574,7 @@ RestQuery.prototype.handleInclude = function() {
 };
 
 //Returns a promise of a processed set of results
-RestQuery.prototype.runAfterFindTrigger = function(randomString) {
+RestQuery.prototype.runAfterFindTrigger = function(queryId) {
   if (!this.response) {
     return;
   }
@@ -584,7 +584,7 @@ RestQuery.prototype.runAfterFindTrigger = function(randomString) {
     return Promise.resolve();
   }
   // Run afterFind trigger and set the new results
-  return triggers.maybeRunAfterFindTrigger(triggers.Types.afterFind, this.auth, this.className,this.response.results, this.config, randomString).then((results) => {
+  return triggers.maybeRunAfterFindTrigger(triggers.Types.afterFind, this.auth, this.className,this.response.results, this.config, queryId).then((results) => {
     this.response.results = results;
   });
 };
