@@ -657,29 +657,29 @@ RestWrite.prototype.transformUser = async function () {
   }
 
   // Do not cleanup session if objectId is not set
-  if (this.query && this.objectId()) {
-    // If we're updating a _User object, we need to clear out the cache for that user. Find all their
-    // session tokens, and remove them from the cache.
-    const query = await RestQuery({
-      method: RestQuery.Method.find,
-      config: this.config,
-      auth: Auth.master(this.config),
-      className: '_Session',
-      runBeforeFind: false,
-      restWhere: {
-        user: {
-          __type: 'Pointer',
-          className: '_User',
-          objectId: this.objectId(),
-        },
-      },
-    });
-    promise = query.execute().then(results => {
-      results.results.forEach(session =>
-        this.config.cacheController.user.del(session.sessionToken)
-      );
-    });
-  }
+  // if (this.query && this.objectId()) {
+  //   // If we're updating a _User object, we need to clear out the cache for that user. Find all their
+  //   // session tokens, and remove them from the cache.
+  //   const query = await RestQuery({
+  //     method: RestQuery.Method.find,
+  //     config: this.config,
+  //     auth: Auth.master(this.config),
+  //     className: '_Session',
+  //     runBeforeFind: false,
+  //     restWhere: {
+  //       user: {
+  //         __type: 'Pointer',
+  //         className: '_User',
+  //         objectId: this.objectId(),
+  //       },
+  //     },
+  //   });
+  //   promise = query.execute().then(results => {
+  //     results.results.forEach(session =>
+  //       this.config.cacheController.user.del(session.sessionToken)
+  //     );
+  //   });
+  // }
 
   return promise
     .then(() => {
