@@ -1045,16 +1045,6 @@ RestWrite.prototype.destroyDuplicatedSessions = function () {
   if (!user.objectId) {
     return;
   }
-  this.config.database.destroy(
-    '_Session',
-    {
-      user,
-      installationId,
-      sessionToken: { $ne: sessionToken },
-    },
-    {},
-    this.validSchemaController
-  );
 };
 
 // Handles any followup logic
