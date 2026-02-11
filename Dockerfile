@@ -1,51 +1,68 @@
-FROM node:18-bullseye as intermediate
+# Stage 1: Clone repository
+FROM node:22-alpine AS git-clone
 ARG GIT_TOKEN
 ARG BRANCH=dev
-RUN apt-get update && apt-get install -y git
 
-RUN git config --global credential.helper 'cache --timeout=3600'
-RUN export GIT_ASKPASS=${GIT_TOKEN}
+RUN apk add --no-cache git
 
-RUN git clone -b ${BRANCH} --recurse-submodules https://${GIT_TOKEN}:x-oauth-basic@github.com/insidemaps-org/website-v1.git
+RUN git config --global url."https://${GIT_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
-FROM node:18-bullseye
+RUN git clone -b ${BRANCH} --recurse-submodules --depth 1 \
+    https://github.com/insidemaps-org/web-legacy-api-server.git /repo
 
-COPY --from=intermediate /website-v1 /var/www/production
+# Stage 2: Build web-legacy-api-server
+FROM node:22-alpine AS web-build
+
+RUN apk add --no-cache openjdk17
 
 WORKDIR /var/www/production
 
-RUN apt-get update && apt-get install -y default-jdk
-RUN npm install -g npm@latest
+COPY --from=git-clone /repo ./
 
 RUN echo '{"parseServerURLForNode": {"URL": "https://parse-dev.insidemaps.com/parse"}}' > ./config.json
-RUN npm i
 
+RUN npm ci --prefer-offline && \
+    npm run build-ts && \
+    npm prune --production && \
+    npm cache clean --force
 
-RUN npm run build-ts
-RUN npm run build -ws
+# Stage 3: Build parse-server
+FROM node:22-alpine AS parse-build
 
-RUN mkdir /var/log/insideMaps
-RUN chmod g+w,a+w /var/log/insideMaps
-RUN mkdir /var/tmp/insideMaps
-RUN mkdir /var/tmp/insideMaps/files
-RUN chmod g+w,a+w /var/tmp/insideMaps/files
-
-
-RUN mkdir -p /parse-server
-COPY ./ /parse-server/
-
-RUN mkdir -p /parse-server/config
-VOLUME /parse-server/config
-
-RUN mkdir -p /parse-server/cloud
-VOLUME /parse-server/cloud
+RUN apk add --no-cache git
 
 WORKDIR /parse-server
 
-RUN npm install && npm run build
+COPY . .
+RUN npm ci --ignore-scripts && \
+    npm run build && \
+    npm prune --production && \
+    npm cache clean --force
 
-ENV PORT=1337
+# Stage 4: Final production image
+FROM node:22-alpine AS production
+
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+RUN mkdir -p /var/log/insideMaps /var/tmp/insideMaps/files /parse-server/config /parse-server/cloud && \
+    chown -R nodejs:nodejs /var/log/insideMaps /var/tmp/insideMaps /parse-server
+
+WORKDIR /var/www/production
+
+COPY --from=web-build --chown=nodejs:nodejs /var/www/production ./
+
+WORKDIR /parse-server
+
+COPY --from=parse-build --chown=nodejs:nodejs /parse-server ./
+
+VOLUME ["/parse-server/config", "/parse-server/cloud"]
+
+ENV NODE_ENV=production \
+    PORT=1337
 
 EXPOSE $PORT
+
+USER nodejs
 
 ENTRYPOINT ["npm", "start", "--"]
