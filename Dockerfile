@@ -19,7 +19,7 @@ WORKDIR /var/www/production
 
 COPY --from=git-clone /repo ./
 
-RUN echo '{"parseServerURLForNode": {"URL": "https://parse-dev.insidemaps.com/parse"}}' > ./config.json
+RUN echo '{"parseServerURLForNode": {"URL": "https://acac.insidemaps.com/parse"}}' > ./config.json
 
 RUN npm ci --prefer-offline && \
     npm run build-ts && \
