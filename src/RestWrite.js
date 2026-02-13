@@ -480,8 +480,9 @@ RestWrite.prototype._validatePasswordPolicy = function() {
 
 
 RestWrite.prototype._validatePasswordRequirements = function() {
-  // check if the password conforms to the defined password policy if configured
-  const policyError = 'Password does not meet the Password Policy requirements.';
+  // check if the password conforms to the defined password policy if configured, adjust message if PARSE_SERVER_PASSWORD_POLICY is changed.
+  // "PARSE_SERVER_PASSWORD_POLICY": "{\"validatorPattern\": \"^(?=.*[a-z])(?=.*[A-Z])(?=.*\\\\d)(?=.*[~`!@#$%^&*()_\\\\-+={[}\\\\]|\\\\:;\\\"'<,>.?/]).{8,}$\"}",
+  const policyError = 'Password does not meet the Password Policy requirements. (8 characters long, 1 lowercase, 1 uppercase, 1 digit, 1 special character)';
 
   // check whether the password meets the password strength requirements
   if (this.config.passwordPolicy.patternValidator && !this.config.passwordPolicy.patternValidator(this.data.password) ||

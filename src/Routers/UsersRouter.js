@@ -16,6 +16,22 @@ export class UsersRouter extends ClassesRouter {
     return '_User';
   }
 
+  handleGetUserRoles(req) {
+    if (!req.info || !req.info.sessionToken || !req.auth.user) {
+      throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token: NONE');
+    }
+
+    return rest.find(req.config, req.auth, '_User', {objectId: req.auth.user.id}, {}, req.info.clientSDK, req)
+      .then((response) => {
+        const result = [];
+        req.auth.userRoles.forEach(role => {
+          result.push(role.replace('role:', ''));
+        });
+
+        return { response: result };
+      });
+  }
+
   handleMe(req) {
     if (!req.info || !req.info.sessionToken) {
       throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'invalid session token: NONE');
@@ -301,6 +317,7 @@ export class UsersRouter extends ClassesRouter {
 
 
   mountRoutes() {
+    this.route('GET', '/users/:objectId/roles', req => { return this.handleGetUserRoles(req); });
     this.route('GET', '/users', req => { return this.handleFind(req); });
     this.route('POST', '/users', req => { return this.handleCreate(req); });
     this.route('GET', '/users/me', req => { return this.handleMe(req); });
