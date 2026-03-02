@@ -216,7 +216,9 @@ export default {
     action: nullParser
   },
   "silent": {
+    env: "PARSE_SERVER_SILENT",
     help: "Disables console output",
+    action: booleanParser
   },
   "revokeSessionOnPasswordReset": {
     env: "PARSE_SERVER_REVOKE_SESSION_ON_PASSWORD_RESET",
