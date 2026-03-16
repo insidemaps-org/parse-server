@@ -60,7 +60,7 @@ VOLUME ["/parse-server/config", "/parse-server/cloud"]
 
 ENV NODE_ENV=production \
     PORT=1337 \
-    NODE_OPTIONS="--disable-warning=DEP0170"
+    NODE_OPTIONS="--disable-warning=DEP0170 --max-old-space-size=2048"
 
 EXPOSE $PORT
 
