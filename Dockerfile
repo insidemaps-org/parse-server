@@ -59,7 +59,8 @@ COPY --from=parse-build --chown=nodejs:nodejs /parse-server ./
 VOLUME ["/parse-server/config", "/parse-server/cloud"]
 
 ENV NODE_ENV=production \
-    PORT=1337
+    PORT=1337 \
+    NODE_OPTIONS="--disable-warning=DEP0170"
 
 EXPOSE $PORT
 
