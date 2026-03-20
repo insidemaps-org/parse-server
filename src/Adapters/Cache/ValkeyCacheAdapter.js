@@ -149,7 +149,7 @@ export class ValkeyCacheAdapter {
       }
       try {
         return JSON.parse(res);
-      } catch {
+      } catch (e) {
         return res;
       }
     }).catch((err) => {
