@@ -222,22 +222,34 @@ export class ValkeyCacheAdapter {
 
   /**
    * Delete all keys matching a pattern using SCAN (non-blocking).
+   * Uses recursive Promises instead of async/await because this Parse Server's
+   * Babel config transpiles async to regeneratorRuntime which is not polyfilled.
    */
-  async _deleteByPattern(pattern) {
-    let cursor = '0';
-    do {
-      // Note: SCAN returns keys WITH the prefix when using ioredis keyPrefix,
-      // but DEL needs keys WITHOUT the prefix. We handle this by creating a
-      // raw (no-prefix) pipeline for deletion.
-      const [newCursor, keys] = await this.client.scan(cursor, 'MATCH', pattern, 'COUNT', 200);
-      cursor = newCursor;
-      if (keys.length > 0) {
-        // Strip the keyPrefix for deletion since ioredis auto-prepends it
-        const prefix = this.client.options.keyPrefix || '';
-        const strippedKeys = keys.map(k => k.startsWith(prefix) ? k.slice(prefix.length) : k);
-        await this.client.del(...strippedKeys);
-      }
-    } while (cursor !== '0');
+  _deleteByPattern(pattern) {
+    const prefix = this.client.options.keyPrefix || '';
+    const self = this;
+
+    function scanAndDelete(cursor) {
+      return self.client.scan(cursor, 'MATCH', pattern, 'COUNT', 200).then(function (result) {
+        const newCursor = result[0];
+        const keys = result[1];
+        let delPromise = Promise.resolve();
+        if (keys.length > 0) {
+          // Strip the keyPrefix for deletion since ioredis auto-prepends it
+          const strippedKeys = keys.map(function (k) {
+            return k.indexOf(prefix) === 0 ? k.slice(prefix.length) : k;
+          });
+          delPromise = self.client.del.apply(self.client, strippedKeys);
+        }
+        return delPromise.then(function () {
+          if (newCursor !== '0') {
+            return scanAndDelete(newCursor);
+          }
+        });
+      });
+    }
+
+    return scanAndDelete('0');
   }
 }
 
