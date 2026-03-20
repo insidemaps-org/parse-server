@@ -20,6 +20,7 @@ import { AnalyticsRouter }      from './Routers/AnalyticsRouter';
 import { ClassesRouter }        from './Routers/ClassesRouter';
 import { FeaturesRouter }       from './Routers/FeaturesRouter';
 import { InMemoryCacheAdapter } from './Adapters/Cache/InMemoryCacheAdapter';
+import { ValkeyCacheAdapter }  from './Adapters/Cache/ValkeyCacheAdapter';
 import { AnalyticsController }  from './Controllers/AnalyticsController';
 import { CacheController }      from './Controllers/CacheController';
 import { AnalyticsAdapter }     from './Adapters/Analytics/AnalyticsAdapter';
@@ -143,12 +144,17 @@ class ParseServer {
     sessionLength = defaults.sessionLength, // 1 Year in seconds
     expireInactiveSessions = defaults.expireInactiveSessions,
     revokeSessionOnPasswordReset = defaults.revokeSessionOnPasswordReset,
-    schemaCacheTTL = defaults.schemaCacheTTL, // cache for 5s
+    schemaCacheTTL = defaults.schemaCacheTTL, // cache for 5 min
 
     sendgridApiKey = defaults.sendgridApiKey,
-    cacheTTL = defaults.cacheTTL, // cache for 5s
-    cacheMaxSize = defaults.cacheMaxSize, // 10000
-    enableSingleSchemaCache = false,
+    cacheTTL = defaults.cacheTTL, // cache for 30s
+    cacheMaxSize = defaults.cacheMaxSize, // 50000
+    // Share a single schema cache across all requests instead of rebuilding
+    // it per-request. Without this, every incoming HTTP request re-fetches
+    // the schema from the DB (or from the per-request cache that expires in
+    // schemaCacheTTL). With enableSingleSchemaCache=true, one shared cache
+    // serves all concurrent requests, drastically reducing _SCHEMA reads.
+    enableSingleSchemaCache = true,
 	objectIdSize = defaults.objectIdSize,
 	autoVerifyEmailsIfMatch = {},
     __indexBuildCompletionCallbackForTests = () => {},
@@ -254,7 +260,23 @@ class ParseServer {
     );
     const userController = new UserController(emailControllerAdapter, appId, { verifyUserEmails });
 
-    const cacheControllerAdapter = loadAdapter(cacheAdapter, InMemoryCacheAdapter, {appId: appId, ttl: cacheTTL, maxSize: cacheMaxSize });
+    // Cache adapter selection:
+    // - If a cacheAdapter was explicitly provided (e.g., via config), use it.
+    // - If VALKEY_HOST env var is set, use ValkeyCacheAdapter (ElastiCache).
+    //   This gives all Parse workers + all ECS tasks a shared distributed cache
+    //   for session tokens, schemas, roles, etc. — eliminating redundant MongoDB
+    //   lookups across workers/tasks.
+    // - Otherwise, fall back to InMemoryCacheAdapter (per-process LRU).
+    let defaultCacheAdapter;
+    if (!cacheAdapter && process.env.VALKEY_HOST) {
+      defaultCacheAdapter = ValkeyCacheAdapter;
+      /* eslint-disable no-console */
+      console.log(`[ParseServer] Using ValkeyCacheAdapter with ElastiCache at ${process.env.VALKEY_HOST}`);
+      /* eslint-enable no-console */
+    } else {
+      defaultCacheAdapter = InMemoryCacheAdapter;
+    }
+    const cacheControllerAdapter = loadAdapter(cacheAdapter, defaultCacheAdapter, {appId: appId, ttl: cacheTTL, maxSize: cacheMaxSize });
     const cacheController = new CacheController(cacheControllerAdapter, appId);
 
     const analyticsControllerAdapter = loadAdapter(analyticsAdapter, AnalyticsAdapter);
@@ -416,7 +438,16 @@ class ParseServer {
         }
       });
     }
-    if (process.env.PARSE_SERVER_ENABLE_EXPERIMENTAL_DIRECT_ACCESS === '1') {
+    // Direct Access: when Parse JS SDK calls (query.find(), object.save(), etc.)
+    // are made from cloud code running INSIDE this same Parse Server process,
+    // route them directly through the Express router in-memory instead of
+    // making an HTTP request to ourselves over the network.
+    // This eliminates HTTP serialization/deserialization, TCP overhead, and
+    // event-loop contention from self-requests. Every Parse SDK call from cloud
+    // code (beforeSave, afterSave, cloud functions) benefits from this.
+    //
+    // Can still be disabled by setting the env var to '0' if needed.
+    if (process.env.PARSE_SERVER_ENABLE_EXPERIMENTAL_DIRECT_ACCESS !== '0') {
       Parse.CoreManager.setRESTController(ParseServerRESTController(appId, appRouter));
     }
     return api;
