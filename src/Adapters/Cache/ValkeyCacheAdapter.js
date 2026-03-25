@@ -100,7 +100,9 @@ export class ValkeyCacheAdapter {
       db: options.db || parseInt(process.env.VALKEY_DB) || 0,
       keyPrefix: options.keyPrefix || process.env.VALKEY_KEY_PREFIX || 'parse:',
       connectTimeout: options.connectTimeout || 10000,
-      commandTimeout: options.commandTimeout || 5000,
+      // Per-command timeout: if Valkey can't respond in 500ms, it's faster to
+      // fall through to MongoDB than to wait. A cache should be near-instant.
+      commandTimeout: options.commandTimeout || 500,
       retryStrategy: (times) => {
         if (times > 20) {
           console.error('[Parse:ValkeyCacheAdapter] Max retry attempts reached, giving up');
