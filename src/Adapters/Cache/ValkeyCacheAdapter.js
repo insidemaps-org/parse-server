@@ -86,6 +86,13 @@ export class ValkeyCacheAdapter {
     this.ttl = options.ttl || DEFAULT_TTL;
     this._connected = false;
 
+    // Track ENOBUFS errors to implement cooldown and avoid reconnect storms.
+    // When the kernel socket buffer is full (ENOBUFS), hammering reconnect
+    // only makes things worse. We back off and let the buffer drain.
+    this._enobufsCount = 0;
+    this._enobufsBackoff = false;
+    this._enobufsBackoffTimer = null;
+
     const redisOptions = {
       host: options.host || process.env.VALKEY_HOST || '127.0.0.1',
       port: options.port || parseInt(process.env.VALKEY_PORT) || 6379,
@@ -95,16 +102,24 @@ export class ValkeyCacheAdapter {
       connectTimeout: options.connectTimeout || 10000,
       commandTimeout: options.commandTimeout || 5000,
       retryStrategy: (times) => {
-        if (times > 10) {
-          console.error('[Parse:ValkeyCacheAdapter] Max retry attempts reached');
+        if (times > 20) {
+          console.error('[Parse:ValkeyCacheAdapter] Max retry attempts reached, giving up');
           return null;
         }
-        const delay = Math.min(times * 500, 5000);
+        // Exponential backoff: 500ms, 1s, 2s, 4s, capped at 10s
+        // Longer backoff for ENOBUFS — let the network buffer drain
+        const base = this._enobufsCount > 0 ? 2000 : 500;
+        const delay = Math.min(base * Math.pow(2, Math.min(times - 1, 4)), 10000);
+        console.log(`[Parse:ValkeyCacheAdapter] Reconnecting in ${delay}ms (attempt ${times}, enobufs=${this._enobufsCount})`);
         return delay;
       },
       lazyConnect: false,
       enableReadyCheck: true,
       maxRetriesPerRequest: 3,
+      // Prevent ioredis from buffering commands while disconnected.
+      // Without this, thousands of commands pile up in memory during outages
+      // and flood the server on reconnect, triggering ENOBUFS again.
+      enableOfflineQueue: false,
     };
 
     // Enable TLS for AWS ElastiCache
@@ -121,11 +136,34 @@ export class ValkeyCacheAdapter {
 
     this.client.on('ready', () => {
       this._connected = true;
+      this._enobufsCount = 0; // Reset on successful reconnect
       console.log('[Parse:ValkeyCacheAdapter] Ready');
     });
 
     this.client.on('error', (err) => {
-      console.error('[Parse:ValkeyCacheAdapter] Error:', err.message);
+      // ENOBUFS = kernel send buffer is full — the network can't keep up.
+      // Hammering reconnects makes it worse. Enter a cooldown period where we
+      // treat the cache as unavailable, letting the buffer drain before retrying.
+      if (err.message && err.message.includes('ENOBUFS')) {
+        this._enobufsCount++;
+        this._connected = false;
+
+        if (!this._enobufsBackoff) {
+          this._enobufsBackoff = true;
+          // Exponential cooldown: 5s, 10s, 20s, capped at 30s
+          const cooldown = Math.min(5000 * Math.pow(2, Math.min(this._enobufsCount - 1, 3)), 30000);
+          console.error(`[Parse:ValkeyCacheAdapter] ENOBUFS #${this._enobufsCount} — cache disabled for ${cooldown}ms to let buffer drain`);
+          clearTimeout(this._enobufsBackoffTimer);
+          this._enobufsBackoffTimer = setTimeout(() => {
+            this._enobufsBackoff = false;
+            // _connected will be set to true by the 'ready' event if ioredis reconnects
+            console.log('[Parse:ValkeyCacheAdapter] ENOBUFS cooldown ended, allowing reconnect');
+          }, cooldown);
+          if (this._enobufsBackoffTimer.unref) this._enobufsBackoffTimer.unref();
+        }
+      } else {
+        console.error('[Parse:ValkeyCacheAdapter] Error:', err.message);
+      }
       this._connected = false;
     });
 
@@ -135,12 +173,21 @@ export class ValkeyCacheAdapter {
   }
 
   /**
+   * Check if the cache is available for operations.
+   * Returns false during ENOBUFS cooldown even if ioredis reconnects,
+   * to avoid immediately re-saturating the buffer.
+   */
+  _isAvailable() {
+    return this._connected && !this._enobufsBackoff;
+  }
+
+  /**
    * Get a value from cache.
    * Parse Server expects: resolve(null) on miss, resolve(value) on hit.
    */
   get(key) {
     debug('get', key);
-    if (!this._connected) {
+    if (!this._isAvailable()) {
       return Promise.resolve(null);
     }
     return this.client.get(key).then((res) => {
@@ -166,7 +213,7 @@ export class ValkeyCacheAdapter {
    */
   put(key, value, ttl = this.ttl) {
     debug('put', key, ttl);
-    if (!this._connected) {
+    if (!this._isAvailable()) {
       return Promise.resolve();
     }
     if (ttl === 0) {
@@ -195,7 +242,7 @@ export class ValkeyCacheAdapter {
    */
   del(key) {
     debug('del', key);
-    if (!this._connected) {
+    if (!this._isAvailable()) {
       return Promise.resolve();
     }
     return this.client.del(key).catch((err) => {
@@ -210,7 +257,7 @@ export class ValkeyCacheAdapter {
    */
   clear() {
     debug('clear');
-    if (!this._connected) {
+    if (!this._isAvailable()) {
       return Promise.resolve();
     }
     // We need to get the keyPrefix to scan for our keys only
