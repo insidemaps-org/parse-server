@@ -1003,21 +1003,6 @@ RestWrite.prototype.runDatabaseOperation = function() {
           response.updatedAt = this.updatedAt;
           this._updateResponseWithData(response, this.data);
           this.response = { response };
-
-          // Invalidate the cached user object so subsequent requests (even on
-          // other ECS tasks sharing the same Valkey cache) see the updated data
-          // immediately.  Without this, profile picture changes (and any other
-          // _User field update) would be invisible to other requests until the
-          // cache TTL expires (default 30 s).
-          //
-          // The user cache is keyed by session token (see Auth.getAuthForSessionToken).
-          // We invalidate the token of the user who made the request so their next
-          // authenticated call re-fetches the user from MongoDB.
-          if (this.className === '_User' &&
-              this.httpRequest && this.httpRequest.info &&
-              this.httpRequest.info.sessionToken) {
-            this.config.cacheController.user.del(this.httpRequest.info.sessionToken);
-          }
         });
     });
   } else {
