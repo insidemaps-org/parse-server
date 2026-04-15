@@ -44,6 +44,7 @@
  *   }
  */
 
+import { CacheAdapter } from './CacheAdapter';
 import logger from '../../logger';
 
 let Redis;
@@ -59,7 +60,7 @@ function debug(...args) {
   logger.debug.apply(logger, ['ValkeyCacheAdapter', ...args]);
 }
 
-export class ValkeyCacheAdapter {
+export class ValkeyCacheAdapter extends CacheAdapter {
   /**
    * @param {Object} options
    * @param {string}  [options.host='127.0.0.1']   - Valkey/Redis host
@@ -75,6 +76,7 @@ export class ValkeyCacheAdapter {
    * @param {number}  [options.maxSize]              - Ignored (no LRU eviction in Redis, kept for API compat)
    */
   constructor(options = {}) {
+    super();
     if (!Redis) {
       throw new Error(
         'ValkeyCacheAdapter requires the "ioredis" package. ' +
@@ -105,14 +107,14 @@ export class ValkeyCacheAdapter {
       commandTimeout: options.commandTimeout || 500,
       retryStrategy: (times) => {
         if (times > 20) {
-          console.error('[Parse:ValkeyCacheAdapter] Max retry attempts reached, giving up');
+          logger.error('[Parse:ValkeyCacheAdapter] Max retry attempts reached, giving up');
           return null;
         }
         // Exponential backoff: 500ms, 1s, 2s, 4s, capped at 10s
         // Longer backoff for ENOBUFS — let the network buffer drain
         const base = this._enobufsCount > 0 ? 2000 : 500;
         const delay = Math.min(base * Math.pow(2, Math.min(times - 1, 4)), 10000);
-        console.log(`[Parse:ValkeyCacheAdapter] Reconnecting in ${delay}ms (attempt ${times}, enobufs=${this._enobufsCount})`);
+        logger.info(`[Parse:ValkeyCacheAdapter] Reconnecting in ${delay}ms (attempt ${times}, enobufs=${this._enobufsCount})`);
         return delay;
       },
       lazyConnect: false,
@@ -133,13 +135,13 @@ export class ValkeyCacheAdapter {
     this.client = new Redis(redisOptions);
 
     this.client.on('connect', () => {
-      console.log(`[Parse:ValkeyCacheAdapter] Connected to ${redisOptions.host}:${redisOptions.port}`);
+      logger.info(`[Parse:ValkeyCacheAdapter] Connected to ${redisOptions.host}:${redisOptions.port}`);
     });
 
     this.client.on('ready', () => {
       this._connected = true;
       this._enobufsCount = 0; // Reset on successful reconnect
-      console.log('[Parse:ValkeyCacheAdapter] Ready');
+      logger.info('[Parse:ValkeyCacheAdapter] Ready');
     });
 
     this.client.on('error', (err) => {
@@ -154,17 +156,17 @@ export class ValkeyCacheAdapter {
           this._enobufsBackoff = true;
           // Exponential cooldown: 5s, 10s, 20s, capped at 30s
           const cooldown = Math.min(5000 * Math.pow(2, Math.min(this._enobufsCount - 1, 3)), 30000);
-          console.error(`[Parse:ValkeyCacheAdapter] ENOBUFS #${this._enobufsCount} — cache disabled for ${cooldown}ms to let buffer drain`);
+          logger.error(`[Parse:ValkeyCacheAdapter] ENOBUFS #${this._enobufsCount} — cache disabled for ${cooldown}ms to let buffer drain`);
           clearTimeout(this._enobufsBackoffTimer);
           this._enobufsBackoffTimer = setTimeout(() => {
             this._enobufsBackoff = false;
             // _connected will be set to true by the 'ready' event if ioredis reconnects
-            console.log('[Parse:ValkeyCacheAdapter] ENOBUFS cooldown ended, allowing reconnect');
+            logger.info('[Parse:ValkeyCacheAdapter] ENOBUFS cooldown ended, allowing reconnect');
           }, cooldown);
           if (this._enobufsBackoffTimer.unref) this._enobufsBackoffTimer.unref();
         }
       } else {
-        console.error('[Parse:ValkeyCacheAdapter] Error:', err.message);
+        logger.error('[Parse:ValkeyCacheAdapter] Error:', err.message);
       }
       this._connected = false;
     });
@@ -202,7 +204,7 @@ export class ValkeyCacheAdapter {
         return res;
       }
     }).catch((err) => {
-      console.error(`[Parse:ValkeyCacheAdapter] get error for "${key}":`, err.message);
+      logger.error(`[Parse:ValkeyCacheAdapter] get error for "${key}":`, err.message);
       return null; // Graceful degradation — treat as cache miss
     });
   }
@@ -229,13 +231,13 @@ export class ValkeyCacheAdapter {
 
     if (ttl === Infinity) {
       return this.client.set(key, serialized).catch((err) => {
-        console.error(`[Parse:ValkeyCacheAdapter] put error for "${key}":`, err.message);
+        logger.error(`[Parse:ValkeyCacheAdapter] put error for "${key}":`, err.message);
       });
     }
 
     // psetex = SET with TTL in milliseconds (Parse uses ms for cache TTL)
     return this.client.psetex(key, ttl, serialized).catch((err) => {
-      console.error(`[Parse:ValkeyCacheAdapter] put error for "${key}":`, err.message);
+      logger.error(`[Parse:ValkeyCacheAdapter] put error for "${key}":`, err.message);
     });
   }
 
@@ -248,7 +250,7 @@ export class ValkeyCacheAdapter {
       return Promise.resolve();
     }
     return this.client.del(key).catch((err) => {
-      console.error(`[Parse:ValkeyCacheAdapter] del error for "${key}":`, err.message);
+      logger.error(`[Parse:ValkeyCacheAdapter] del error for "${key}":`, err.message);
     });
   }
 
@@ -265,7 +267,7 @@ export class ValkeyCacheAdapter {
     // We need to get the keyPrefix to scan for our keys only
     const prefix = this.client.options.keyPrefix || 'parse:';
     return this._deleteByPattern(`${prefix}*`).catch((err) => {
-      console.error('[Parse:ValkeyCacheAdapter] clear error:', err.message);
+      logger.error('[Parse:ValkeyCacheAdapter] clear error:', err.message);
     });
   }
 
