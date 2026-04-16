@@ -2,6 +2,10 @@
 import program from './commander';
 
 function logStartupOptions(options) {
+  if (options.silent) {
+    return;
+  }
+
   for (const key in options) {
     let value = options[key];
     if (key == "masterKey") {

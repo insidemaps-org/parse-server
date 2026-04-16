@@ -31,10 +31,25 @@ export default {
   sessionLength: 31536000,
   expireInactiveSessions: true,
   revokeSessionOnPasswordReset: true,
-  schemaCacheTTL: 5000, // in ms
+  // Schema cache TTL. 60s reduces _SCHEMA queries while keeping field additions
+  // visible within 1 minute — no restart needed when adding new fields.
+  schemaCacheTTL: 60000, // 1 minute (was 5000ms / 5s)
   sendgridApiKey: process.env.SENDGRID_APIKEY,
-  cacheTTL: 5000,
-  cacheMaxSize: 10000,
+  // General session/role cache TTL.
+  // WHAT IS CACHED: session tokens (keyed by token → user object) and role memberships.
+  // WHAT IS NOT CACHED: general object query results — those always hit MongoDB directly.
+  //
+  // Cache invalidation on writes:
+  //   - Sessions: explicitly invalidated on logout/delete (rest.js calls cacheAdapter.user.del).
+  //   - Roles: NOT explicitly invalidated — a role membership change takes up to 30s to
+  //     propagate to in-flight requests. This is acceptable for our access patterns.
+  //
+  // Saving a user object or any other Parse object does NOT serve stale data to
+  // callers that do a direct query — only the session-token → user lookup uses this cache.
+  cacheTTL: 30000, // 30 seconds (was 5000ms / 5s)
+  // Larger cache = fewer evictions under load. 10k entries was tight for a
+  // production workload with thousands of sessions + roles + schemas.
+  cacheMaxSize: 50000, // (was 10000)
   userSensitiveFields: [],
   objectIdSize: 10,
   masterKeyIps: []

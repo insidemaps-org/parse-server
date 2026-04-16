@@ -406,9 +406,10 @@ export default class SchemaController {
       return this._dbAdapter.getAllClasses()
         .then(allSchemas => allSchemas.map(injectDefaultSchema))
         .then(allSchemas => {
-          return this._cache.setAllClasses(allSchemas).then(() => {
-            return allSchemas;
-          });
+          // Fire-and-forget: don't block the request on cache write.
+          // If Valkey is down, we still return the schemas from MongoDB.
+          this._cache.setAllClasses(allSchemas).catch(() => {});
+          return allSchemas;
         })
     });
   }
@@ -433,9 +434,9 @@ export default class SchemaController {
         return this._dbAdapter.getClass(className)
           .then(injectDefaultSchema)
           .then((result) => {
-            return this._cache.setOneSchema(className, result).then(() => {
-              return result;
-            })
+            // Fire-and-forget: don't block the request on cache write.
+            this._cache.setOneSchema(className, result).catch(() => {});
+            return result;
           });
       });
     });
