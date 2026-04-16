@@ -288,7 +288,14 @@ export class ValkeyCacheAdapter extends CacheAdapter {
           const strippedKeys = keys.map(function (k) {
             return k.indexOf(prefix) === 0 ? k.slice(prefix.length) : k;
           });
-          delPromise = self.client.del.apply(self.client, strippedKeys);
+          // Delete keys individually via a pipeline to avoid CROSSSLOT errors
+          // in Redis Cluster mode. A multi-key DEL requires all keys to hash to
+          // the same slot — that is never guaranteed across arbitrary cache keys.
+          // A pipeline sends all commands in one round-trip but executes each
+          // DEL independently, so slot placement doesn't matter.
+          const pipeline = self.client.pipeline();
+          strippedKeys.forEach(function (k) { pipeline.del(k); });
+          delPromise = pipeline.exec();
         }
         return delPromise.then(function () {
           if (newCursor !== '0') {
