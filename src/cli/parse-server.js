@@ -81,20 +81,17 @@ function startServer(options, callback) {
     }
   }
 
-  const handleShutdown = async function() {
+  const handleShutdown = function() {
     console.log('Termination signal received. Shutting down.');
     destroyAliveConnections();
     server.close();
     parseServer.handleShutdown();
     // Flush any buffered Loki log entries before the process exits.
-    // Awaited here so the batch is guaranteed to reach Alloy within the
-    // 30s SIGTERM → SIGKILL window ECS provides.
+    // Awaited via .then() — no async/await due to Babel regenerator constraint.
     const { getLokiLogger } = require('../loki/loki-middleware');
     const loki = getLokiLogger();
     if (loki && loki.enabled) {
-      try {
-        await loki.shutdown();
-      } catch (e) { /* best effort */ }
+      loki.shutdown().catch(function() {});
     }
   };
   process.on('SIGTERM', handleShutdown);
