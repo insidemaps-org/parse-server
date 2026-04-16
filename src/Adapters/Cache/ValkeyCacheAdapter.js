@@ -106,15 +106,13 @@ export class ValkeyCacheAdapter extends CacheAdapter {
       // fall through to MongoDB than to wait. A cache should be near-instant.
       commandTimeout: options.commandTimeout || 500,
       retryStrategy: (times) => {
-        if (times > 20) {
-          logger.error('[Parse:ValkeyCacheAdapter] Max retry attempts reached, giving up');
+        if (times > 5) {
+          logger.error('[Parse:ValkeyCacheAdapter] Max retry attempts reached, giving up — falling back to DB');
           return null;
         }
-        // Exponential backoff: 500ms, 1s, 2s, 4s, capped at 10s
-        // Longer backoff for ENOBUFS — let the network buffer drain
-        const base = this._enobufsCount > 0 ? 2000 : 500;
-        const delay = Math.min(base * Math.pow(2, Math.min(times - 1, 4)), 10000);
-        logger.info(`[Parse:ValkeyCacheAdapter] Reconnecting in ${delay}ms (attempt ${times}, enobufs=${this._enobufsCount})`);
+        // Linear backoff capped at 500ms.
+        const delay = Math.min(100 * times, 500);
+        logger.info(`[Parse:ValkeyCacheAdapter] Reconnecting in ${delay}ms (attempt ${times})`);
         return delay;
       },
       lazyConnect: false,

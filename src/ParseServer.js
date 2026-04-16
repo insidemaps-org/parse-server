@@ -446,7 +446,8 @@ class ParseServer {
     // event-loop contention from self-requests. Every Parse SDK call from cloud
     // code (beforeSave, afterSave, cloud functions) benefits from this.
     //
-    // Can still be disabled by setting the env var to '0' if needed.
+    // ENABLED by default. To disable, set the env var to '0':
+    //   PARSE_SERVER_ENABLE_EXPERIMENTAL_DIRECT_ACCESS=0
     if (process.env.PARSE_SERVER_ENABLE_EXPERIMENTAL_DIRECT_ACCESS !== '0') {
       Parse.CoreManager.setRESTController(ParseServerRESTController(appId, appRouter));
     }
