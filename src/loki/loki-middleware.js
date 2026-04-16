@@ -83,9 +83,6 @@ function lokiMiddleware(req, res, next) {
       };
 
       // Parse attaches config/auth to req via handleParseHeaders middleware
-      if (req.config) {
-        meta.appId = req.config.applicationId;
-      }
       if (req.auth) {
         if (req.auth.user) {
           meta.parseUserId = req.auth.user.id;
@@ -94,7 +91,6 @@ function lokiMiddleware(req, res, next) {
       }
       if (req.info) {
         meta.clientSDK = req.info.clientVersion || (req.info.clientSDK && JSON.stringify(req.info.clientSDK));
-        meta.installationId = req.info.installationId;
       }
 
       // Extract className and operation from the URL
@@ -104,6 +100,11 @@ function lokiMiddleware(req, res, next) {
       if (parsedRoute.operation) meta.operation = parsedRoute.operation;
       if (parsedRoute.functionName) meta.functionName = parsedRoute.functionName;
       if (parsedRoute.objectId) meta.objectId = parsedRoute.objectId;
+
+      // Extract Parse query parameters — useful for debugging slow requests
+      // Source: req.body (POST/PUT) or req.query (GET)
+      const parseQuery = _extractParseQuery(req);
+      if (parseQuery) meta.parseQuery = parseQuery;
 
       // Determine log level from status code
       const level = res.statusCode >= 500 ? 'error'
@@ -117,6 +118,61 @@ function lokiMiddleware(req, res, next) {
   });
 
   next();
+}
+
+/**
+ * Extract relevant Parse query parameters from the request.
+ * Covers GET (query string) and POST/PUT (request body).
+ * Only extracts known useful fields; truncates strings to avoid huge payloads.
+ */
+var QUERY_FIELDS = ['where', 'order', 'limit', 'skip', 'include', 'keys', 'count'];
+var MAX_FIELD_LEN = 500;
+
+function _extractParseQuery(req) {
+  var source = null;
+
+  if (req.method === 'GET' && req.query && Object.keys(req.query).length) {
+    source = req.query;
+  } else if (req.body && typeof req.body === 'object') {
+    source = req.body;
+  }
+
+  if (!source) return null;
+
+  var result = {};
+  var hasAny = false;
+
+  for (var i = 0; i < QUERY_FIELDS.length; i++) {
+    var field = QUERY_FIELDS[i];
+    var val = source[field];
+    if (val === undefined || val === null) continue;
+
+    // Parse JSON strings (GET sends where/order as JSON strings)
+    if (typeof val === 'string') {
+      try { val = JSON.parse(val); } catch (e) { /* keep as string */ }
+    }
+
+    // Truncate long string values
+    if (typeof val === 'string' && val.length > MAX_FIELD_LEN) {
+      val = val.slice(0, MAX_FIELD_LEN) + '…';
+    } else if (typeof val === 'object') {
+      try {
+        var serialized = JSON.stringify(val);
+        if (serialized.length > MAX_FIELD_LEN) {
+          val = JSON.parse(serialized.slice(0, MAX_FIELD_LEN) + '"_truncated":true}') || serialized.slice(0, MAX_FIELD_LEN) + '…';
+          // safe fallback
+          val = serialized.slice(0, MAX_FIELD_LEN) + '…';
+        }
+      } catch (e) {
+        val = String(val);
+      }
+    }
+
+    result[field] = val;
+    hasAny = true;
+  }
+
+  return hasAny ? result : null;
 }
 
 /**
