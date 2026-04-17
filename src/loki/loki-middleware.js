@@ -19,6 +19,8 @@
  *   - method         — HTTP method
  *   - url            — request URL path
  *   - ip             — client IP
+ *   - apiRequestId   — originating API server request UUID (via X-Request-Id header)
+ *   - apiRoute       — originating API server route (via X-Api-Route header)
  */
 
 'use strict';
@@ -98,6 +100,16 @@ function lokiMiddleware(req, res, next) {
       const parsedRoute = _parseRoute(req.method, req.originalUrl || req.url);
       if (parsedRoute.className) meta.className = parsedRoute.className;
       if (parsedRoute.operation) meta.operation = parsedRoute.operation;
+
+      // ── Correlation headers from the API server ────────────────
+      // The API server injects X-Request-Id and X-Api-Route so we can
+      // trace a parse-server log entry back to the originating API request.
+      const apiRequestId       = req.headers['x-request-id'];
+      const apiRoute           = req.headers['x-api-route'];
+      const apiOriginalRoute   = req.headers['x-api-original-route'];
+      if (apiRequestId)     meta.apiRequestId     = apiRequestId;
+      if (apiRoute)         meta.apiRoute         = apiRoute;
+      if (apiOriginalRoute) meta.apiOriginalRoute = apiOriginalRoute;
       if (parsedRoute.functionName) meta.functionName = parsedRoute.functionName;
       if (parsedRoute.objectId) meta.objectId = parsedRoute.objectId;
 
