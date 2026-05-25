@@ -61,6 +61,7 @@ import MongoStorageAdapter      from './Adapters/Storage/Mongo/MongoStorageAdapt
 import SendGrid                 from 'sendgrid';
 import PostgresStorageAdapter   from './Adapters/Storage/Postgres/PostgresStorageAdapter';
 import { ParseServerRESTController } from './ParseServerRESTController';
+const { initLokiMiddleware, getLokiLogger } = require('./loki/loki-middleware');
 
 // Mutate the Parse object to add the Cloud Code handlers
 addParseCloud();
@@ -405,6 +406,11 @@ class ParseServer {
     // This app serves the Parse API directly.
     // It's the equivalent of https://api.parse.com/1 in the hosted Parse API.
     var api = express();
+
+    // ── Loki logging middleware (must be first to capture all requests) ──
+    const lokiMiddlewareFn = initLokiMiddleware();
+    api.use(lokiMiddlewareFn);
+
     //api.use("/apps", express.static(__dirname + "/public"));
     // File handling needs to be before default middlewares are applied
     api.use('/', middlewares.allowCrossDomain, new FilesRouter().expressRouter({
@@ -428,13 +434,31 @@ class ParseServer {
     //This causes tests to spew some useless warnings, so disable in test
     if (!process.env.TESTING) {
       process.on('uncaughtException', (err) => {
+        // Best-effort: synchronously enqueue a fatal log entry.
+        // logFatal() is sync (array push only) — safe to call here.
+        // The flush itself is async so it can't be awaited before the
+        // process exits; any entries in the batch will be lost on a hard
+        // crash, but that is unavoidable without synchronous I/O.
+        const loki = getLokiLogger();
+        if (loki && loki.enabled) {
+          loki.logFatal(err, 'UncaughtException');
+        }
+
         if (err.code === "EADDRINUSE") { // user-friendly message for this common error
           /* eslint-disable no-console */
           console.error(`Unable to listen on port ${err.port}. The port is already in use.`);
           /* eslint-enable no-console */
-          process.exit(0);
+          process.exit(1);
         } else {
           throw err;
+        }
+      });
+      process.on('unhandledRejection', (reason) => {
+        // Same rationale: sync enqueue, no await.
+        const loki = getLokiLogger();
+        if (loki && loki.enabled) {
+          const err = reason instanceof Error ? reason : new Error(String(reason));
+          loki.logFatal(err, 'UnhandledRejection');
         }
       });
     }

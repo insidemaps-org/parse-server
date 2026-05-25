@@ -86,6 +86,13 @@ function startServer(options, callback) {
     destroyAliveConnections();
     server.close();
     parseServer.handleShutdown();
+    // Flush any buffered Loki log entries before the process exits.
+    // Awaited via .then() — no async/await due to Babel regenerator constraint.
+    const { getLokiLogger } = require('../loki/loki-middleware');
+    const loki = getLokiLogger();
+    if (loki && loki.enabled) {
+      loki.shutdown().catch(function() {});
+    }
   };
   process.on('SIGTERM', handleShutdown);
   process.on('SIGINT', handleShutdown);
