@@ -26,6 +26,7 @@
 'use strict';
 
 const LokiLogger = require('./LokiLogger');
+const lokiRequestContext = require('./request-context');
 
 let lokiLogger;
 let _initialized = false;
@@ -66,6 +67,12 @@ function lokiMiddleware(req, res, next) {
   if (SKIP_PATHS.some(p => urlPath === p || urlPath.startsWith(p + '?'))) {
     return next();
   }
+
+  // Trace context forwarded by the API server (see parse-request-context.js).
+  // Logging these lets a single Grafana search by traceId correlate this
+  // parse-server request back to the originating API request.
+  const traceId = req.headers['x-trace-id'];
+  const spanId  = req.headers['x-span-id'];
 
   const startTime = Date.now();
 
@@ -110,6 +117,8 @@ function lokiMiddleware(req, res, next) {
       if (apiRequestId)     meta.apiRequestId     = apiRequestId;
       if (apiRoute)         meta.apiRoute         = apiRoute;
       if (apiOriginalRoute) meta.apiOriginalRoute = apiOriginalRoute;
+      if (traceId)          meta.traceId          = traceId;
+      if (spanId)           meta.spanId           = spanId;
       if (parsedRoute.functionName) meta.functionName = parsedRoute.functionName;
       if (parsedRoute.objectId) meta.objectId = parsedRoute.objectId;
 
@@ -129,7 +138,16 @@ function lokiMiddleware(req, res, next) {
     }
   });
 
-  next();
+  // Run the rest of the request inside an async context carrying the trace
+  // ids so console.* logs emitted while handling it are tagged with the same
+  // traceId/spanId (resolved in LokiLogger.logConsole).
+  if (traceId) {
+    lokiRequestContext.run({ traceId: traceId, spanId: spanId }, function () {
+      next();
+    });
+  } else {
+    next();
+  }
 }
 
 /**
