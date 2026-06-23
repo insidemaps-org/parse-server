@@ -29,6 +29,8 @@
 
 'use strict';
 
+var lokiRequestContext = require('./request-context');
+
 var BASE_BACKOFF_MS       = 1000;
 var MAX_BACKOFF_MS        = 30000;
 var MAX_FIELD_JSON_LENGTH = 10000;
@@ -98,6 +100,13 @@ LokiLogger.prototype.logConsole = function(level, message, stackTrace) {
       message:   message,
     };
     if (stackTrace) entry.stackTrace = stackTrace;
+    // Tag console output with the trace context of the in-flight request so
+    // it correlates with the route log in Grafana (set by loki-middleware).
+    var ctx = lokiRequestContext.getStore();
+    if (ctx) {
+      if (ctx.traceId) entry.traceId = ctx.traceId;
+      if (ctx.spanId)  entry.spanId  = ctx.spanId;
+    }
     this._enqueue({ level: normalizedLevel, source: 'console' }, entry);
   } catch (e) {
     // swallow — prevent loops
