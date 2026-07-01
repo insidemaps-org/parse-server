@@ -85,7 +85,7 @@ COPY --from=parse-build --chown=nodejs:nodejs /parse-server ./
 # (awslogs), so the redundant on-disk winston files are disabled.
 ENV NODE_ENV=production \
     PORT=1337 \
-    NODE_OPTIONS="--disable-warning=DEP0170 --max-old-space-size=1536" \
+    NODE_OPTIONS="--disable-warning=DEP0170 --max-old-space-size=2048" \
     PARSE_SERVER_LOGS_FOLDER=null
 
 EXPOSE 1337
