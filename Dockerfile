@@ -78,9 +78,15 @@ COPY --from=web-build --chown=nodejs:nodejs /var/www/production ./
 WORKDIR /parse-server
 COPY --from=parse-build --chown=nodejs:nodejs /parse-server ./
 
+# cluster=2 workers share the 4 GB task; cap each worker's V8 heap so two
+# workers stay well under the task limit and GC hard instead of aborting
+# (SIGABRT + multi-GB core dump) under load.
+# Logs are shipped to Grafana Loki (console interception) and CloudWatch
+# (awslogs), so the redundant on-disk winston files are disabled.
 ENV NODE_ENV=production \
     PORT=1337 \
-    NODE_OPTIONS="--disable-warning=DEP0170"
+    NODE_OPTIONS="--disable-warning=DEP0170 --max-old-space-size=1536" \
+    PARSE_SERVER_LOGS_FOLDER=null
 
 EXPOSE 1337
 
